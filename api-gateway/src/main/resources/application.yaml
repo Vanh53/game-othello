@@ -1,0 +1,49 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      mvc:
+        routes:
+          # game-othello: auth + users
+          - id: game-othello-route
+            uri: ${GAME_OTHELLO_URL:http://localhost:8080}
+            predicates:
+              - Path=/othello/**
+
+          # ai-model-service
+          - id: ai-model-route
+            uri: ${AI_MODEL_URL:http://localhost:8082}
+            predicates:
+              - Path=/ai-models/**
+
+          # pvp-service: rooms, matches, ws
+          - id: pvp-route
+            uri: ${PVP_SERVICE_URL:http://localhost:8084}
+            predicates:
+              - Path=/rooms/**, /matches/**, /ws/**
+
+          # leaderboard-service
+          - id: leaderboard-route
+            uri: ${LEADERBOARD_URL:http://localhost:8083}
+            predicates:
+              - Path=/leaderboard/**
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600

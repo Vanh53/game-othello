@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pvp-service
+  namespace: othello
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pvp-service
+  template:
+    metadata:
+      labels:
+        app: pvp-service
+    spec:
+      containers:
+      - name: pvp-service
+        image: pvp-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8084
+        env:
+        - name: DB_URL
+          value: "jdbc:postgresql://postgres-service:5432/othello_db?currentSchema=schema_pvp"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: PVP_DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: PVP_DB_PASSWORD
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: KAFKA_SERVERS
+          value: "kafka-service:9092"
+        - name: JWT_SIGNER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: JWT_SIGNER_KEY
+        - name: GAME_OTHELLO_URL
+          value: "http://game-othello-service:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pvp-service
+  namespace: othello
+spec:
+  selector:
+    app: pvp-service
+  ports:
+  - port: 8084
+    targetPort: 8084

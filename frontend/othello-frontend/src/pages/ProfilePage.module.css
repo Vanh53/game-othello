@@ -1,0 +1,273 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.centered {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 1rem;
+  background: #1a1a2e;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.backBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.backBtn:hover { background: rgba(255, 255, 255, 0.15); }
+
+.main {
+  flex: 1;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Hero card */
+.heroCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.avatarWrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0288d1, #4fc3f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatarImg { width: 100%; height: 100%; object-fit: cover; }
+
+.avatarFallback {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.heroInfo { flex: 1; min-width: 120px; }
+
+.username {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 0.2rem;
+}
+
+.displayName { font-size: 0.95rem; color: #94a3b8; margin-bottom: 0.2rem; }
+.email { font-size: 0.85rem; color: #64748b; }
+
+.eloBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.eloValue {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1;
+}
+
+.eloLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #64748b;
+}
+
+.rankBadge {
+  margin-top: 0.25rem;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fde68a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Stats grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.statNum { font-size: 1.6rem; font-weight: 700; color: #e2e8f0; }
+.statName { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; }
+
+.statWin  .statNum { color: #86efac; }
+.statDraw .statNum { color: #fde68a; }
+.statLose .statNum { color: #fca5a5; }
+.statRate .statNum { color: #4fc3f7; font-size: 1.3rem; }
+
+/* Edit card */
+.editCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.editHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.editHeader h3 { font-size: 1rem; font-weight: 600; color: #e2e8f0; }
+
+.editBtn {
+  background: rgba(79, 195, 247, 0.1);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  color: #4fc3f7;
+  padding: 0.35rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.editBtn:hover { background: rgba(79, 195, 247, 0.2); }
+
+/* Info list */
+.infoList { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.infoRow:last-child { border-bottom: none; }
+.infoKey { font-size: 0.85rem; color: #64748b; }
+.infoVal { font-size: 0.9rem; color: #e2e8f0; font-weight: 500; }
+
+/* Form */
+.form { display: flex; flex-direction: column; gap: 1rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.field label { font-size: 0.82rem; color: #cbd5e1; font-weight: 500; }
+
+.field input {
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus { border-color: #4fc3f7; }
+.field input:disabled { opacity: 0.6; cursor: not-allowed; }
+.field input::placeholder { color: #64748b; }
+
+.formActions { display: flex; gap: 0.75rem; margin-top: 0.25rem; }
+
+.btnSave {
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #4fc3f7, #0288d1);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btnSave:hover:not(:disabled) { opacity: 0.9; }
+.btnSave:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnCancel {
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnCancel:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); }
+
+.errorMsg {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.successMsg {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #86efac;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+}

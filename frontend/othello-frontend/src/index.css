@@ -1,0 +1,21 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+}
+
+a {
+  color: #4fc3f7;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

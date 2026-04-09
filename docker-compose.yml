@@ -1,0 +1,155 @@
+version: '3.9'
+
+services:
+  # ─── Infrastructure ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: othello_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ─── Backend Services ─────────────────────────────────────────
+  game-othello:
+    build: ./game-othello
+    container_name: game-othello
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_user
+      DB_USERNAME: user_service_acc
+      DB_PASSWORD: UserPassword@123
+      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ai-model-service:
+    build: ./ai-model-service
+    container_name: ai-model-service
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_ai
+      DB_USERNAME: ai_service_acc
+      DB_PASSWORD: AiPassword@123
+      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pvp-service:
+    build: ./pvp-service
+    container_name: pvp-service
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_pvp
+      DB_USERNAME: pvp_service_acc
+      DB_PASSWORD: PvpPassword@123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_SERVERS: kafka:9092
+      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+      GAME_OTHELLO_URL: http://game-othello:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  leaderboard-service:
+    build: ./leaderboard-service
+    container_name: leaderboard-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_leaderboard
+      DB_USERNAME: leaderboard_service_acc
+      DB_PASSWORD: LeaderPassword@123
+      KAFKA_SERVERS: kafka:9092
+      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+      GAME_OTHELLO_URL: http://game-othello:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8888:8888"
+    environment:
+      GAME_OTHELLO_URL: http://game-othello:8080
+      AI_MODEL_URL: http://ai-model-service:8082
+      PVP_SERVICE_URL: http://pvp-service:8084
+      LEADERBOARD_URL: http://leaderboard-service:8083
+    depends_on:
+      - game-othello
+      - ai-model-service
+      - pvp-service
+      - leaderboard-service
+
+  frontend:
+    build: ./frontend/othello-frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  kafka_data:

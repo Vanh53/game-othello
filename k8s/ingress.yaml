@@ -1,0 +1,70 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: othello-ingress
+  namespace: othello
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: othello.local
+    http:
+      paths:
+      # Frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+      # API Gateway — tất cả API và WebSocket
+      - path: /othello
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888
+      - path: /ai-models
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888
+      - path: /rooms
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888
+      - path: /matches
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888
+      - path: /leaderboard
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8888

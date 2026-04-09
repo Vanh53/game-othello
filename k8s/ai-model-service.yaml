@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-model-service
+  namespace: othello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-model-service
+  template:
+    metadata:
+      labels:
+        app: ai-model-service
+    spec:
+      containers:
+      - name: ai-model-service
+        image: ai-model-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+        env:
+        - name: DB_URL
+          value: "jdbc:postgresql://postgres-service:5432/othello_db?currentSchema=schema_ai"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: AI_DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: AI_DB_PASSWORD
+        - name: JWT_SIGNER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: othello-secrets
+              key: JWT_SIGNER_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-model-service
+  namespace: othello
+spec:
+  selector:
+    app: ai-model-service
+  ports:
+  - port: 8082
+    targetPort: 8082
