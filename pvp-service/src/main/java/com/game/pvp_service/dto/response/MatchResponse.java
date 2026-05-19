@@ -26,4 +26,6 @@ public class MatchResponse {
     LocalDateTime startTime;
     LocalDateTime endTime;
     String moveLog;
+    PlayerInfo player1;
+    PlayerInfo player2;
 }

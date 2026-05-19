@@ -1,5 +1,6 @@
 package com.game.leaderboard_service.entity;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -49,4 +50,7 @@ public class UserStats {
     @Builder.Default
     @Column(name = "total_draws")
     int totalDraws = 0;
+
+    @Column(name = "updated_at")
+    LocalDateTime updatedAt;
 }

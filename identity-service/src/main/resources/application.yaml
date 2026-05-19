@@ -1,0 +1,46 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /othello
+
+spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  application:
+    name: ${IDENTITY_SERVICE_NAME:identity-service}
+  datasource:
+    url: ${DB_URL_IDENTITY}
+    username: ${DB_USERNAME_IDENTITY}
+    password: ${DB_PASSWORD_IDENTITY}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  signerKey: ${JWT_SIGNER_KEY}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+  client-secret: ${GOOGLE_CLIENT_SECRET}
+  redirect-uri: ${GOOGLE_REDIRECT_URI}
+  token-url: ${GOOGLE_TOKEN_URL}
+  userinfo-url: ${GOOGLE_USERINFO_URL}
+
+mezon:
+  client-id: ${MEZON_CLIENT_ID}
+  client-secret: ${MEZON_CLIENT_SECRET}
+  redirect-uri: ${MEZON_REDIRECT_URI}
+  token-url: ${MEZON_TOKEN_URL}
+  userinfo-url: ${MEZON_USERINFO_URL}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${random.value}

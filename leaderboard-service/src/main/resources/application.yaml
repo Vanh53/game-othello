@@ -1,12 +1,16 @@
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   application:
-    name: leaderboard-service
+    name: ${LEADERBOARD_SERVICE_NAME:leaderboard-service}
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/othello_db?currentSchema=schema_leaderboard}
-    username: ${DB_USERNAME:leaderboard_service_acc}
-    password: ${DB_PASSWORD:LeaderPassword@123}
+    url: ${DB_URL_LEADERBOARD}
+    username: ${DB_USERNAME_LEADERBOARD}
+    password: ${DB_PASSWORD_LEADERBOARD}
     driver-class-name: org.postgresql.Driver
   jpa:
+    hibernate:
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
@@ -14,23 +18,26 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
     consumer:
-      group-id: leaderboard-group
+      group-id: ${LEADERBOARD_KAFKA_GROUP_ID:leaderboard-group}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.game.pvp_service.dto.event,com.game.leaderboard_service.dto.event"
+        spring.json.trusted.packages: ${KAFKA_TRUSTED_PACKAGES:com.game.pvp_service.dto.event,com.game.leaderboard_service.dto.event}
 
 server:
-  port: 8083
+  port: ${LEADERBOARD_SERVICE_PORT:8083}
 
 jwt:
-  signerKey: ${JWT_SIGNER_KEY:a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7}
+  signerKey: ${JWT_SIGNER_KEY}
 
 kafka:
   topic:
-    match-result: match-result
+    match-result: ${KAFKA_TOPIC_MATCH_RESULT:match-result}
 
-services:
-  game-othello:
-    url: ${GAME_OTHELLO_URL:http://localhost:8080}
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+

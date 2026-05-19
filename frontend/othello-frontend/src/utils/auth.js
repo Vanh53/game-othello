@@ -1,3 +1,4 @@
+import { jwtDecode } from "jwt-decode";
 /**
  * Lưu token vào storage
  * @param {string} token
@@ -24,21 +25,31 @@ export const removeToken = () => {
  */
 export const decodeToken = (token) => {
   try {
-    const payload = token.split('.')[1]
-    // base64url -> base64
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=')
-    return JSON.parse(atob(padded))
-  } catch {
-    return null
+    return jwtDecode(token);
+  } catch (error) {
+    console.error("Lỗi giải mã token:", error);
+    return null;
   }
 }
 
 export const getRole = () => {
   const token = getToken()
   if (!token) return null
+
   const decoded = decodeToken(token)
-  return decoded?.role || decoded?.roles?.[0] || null
+  return decoded?.role || decoded?.roles?.[0] || decoded?.scope || null
 }
 
-export const isAdmin = () => getRole() === 'ADMIN'
+export const isAdmin = () => {
+  const token = getToken()
+  if (!token) return false
+  
+  const decoded = decodeToken(token)
+
+  const role = decoded?.role || decoded?.roles?.[0] || decoded?.scope || ''
+  if (Array.isArray(role)) {
+    return role.includes('ADMIN')
+  }
+
+  return String(role).includes('ADMIN')
+}

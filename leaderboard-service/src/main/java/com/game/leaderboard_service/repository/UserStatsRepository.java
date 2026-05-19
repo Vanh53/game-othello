@@ -16,6 +16,7 @@ public interface UserStatsRepository extends JpaRepository<UserStats, UUID> {
 
     Page<UserStats> findAllByOrderByEloDescTotalMatchesDesc(Pageable pageable);
 
-    @Query("SELECT COUNT(u) FROM UserStats u WHERE u.elo > :elo OR (u.elo = :elo AND u.totalMatches > :totalMatches)")
-    long countUsersWithHigherElo(@Param("elo") int elo, @Param("totalMatches") int totalMatches);
+
+    @Query("SELECT COUNT(u) FROM UserStats u WHERE u.elo > :elo OR (u.elo = :elo AND u.totalMatches < :totalMatches)")
+    int countUsersWithHigherElo(@Param("elo") int elo, @Param("totalMatches") int totalMatches);
 }

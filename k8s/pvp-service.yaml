@@ -44,7 +44,7 @@ spec:
               name: othello-secrets
               key: JWT_SIGNER_KEY
         - name: GAME_OTHELLO_URL
-          value: "http://game-othello-service:8080"
+          value: "http://identity-service:8080"
 ---
 apiVersion: v1
 kind: Service

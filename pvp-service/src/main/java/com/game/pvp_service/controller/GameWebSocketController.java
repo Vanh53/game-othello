@@ -44,11 +44,16 @@ public class GameWebSocketController {
     public void makeMove(MoveRequest request, Principal principal) {
         String username = principal.getName();
         try {
+            log.info("📥 User {} yêu cầu đi cờ tại tọa độ: row={}, col={}, matchId={}", username, request.getRow(), request.getCol(), request.getMatchId());
+
             matchService.applyMove(request.getMatchId(), username, request.getRow(), request.getCol());
+
+            log.info("✅ Nước đi của {} hợp lệ và đã lưu thành công!", username);
         } catch (AppException e) {
+            log.warn("❌ Nước đi của {} bị TỪ CHỐI. Lý do: {} (code={})", username, e.getErrorCode(), e.getErrorCode().getCode());
             sendError(username, e.getErrorCode());
         } catch (Exception e) {
-            log.error("Unexpected error in game.move for user={}: {}", username, e.getMessage(), e);
+            log.error("❌ Unexpected error in game.move for user={}: {}", username, e.getMessage(), e);
             sendError(username, ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
     }

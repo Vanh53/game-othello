@@ -14,7 +14,8 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Chuẩn hóa lỗi theo ApiResponse
+// Tất cả backend đều trả về { code, message, result }
+// Interceptor này unwrap để caller nhận thẳng data.result
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -23,5 +24,8 @@ api.interceptors.response.use(
     return Promise.reject(new Error(message))
   }
 )
+
+// Helper: lấy result từ ApiResponse wrapper
+export const unwrap = (res) => res.data?.result ?? res.data
 
 export default api

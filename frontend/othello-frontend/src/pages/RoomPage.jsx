@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createRoom, getRoom, startRoom } from '../api/gameService'
+import { createRoom, joinRoom, startRoom, leaveRoom } from '../api/gameService'
 import { decodeToken, getToken } from '../utils/auth'
-import { MOCK_ROOM } from '../mock/mockData'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
 import styles from './RoomPage.module.css'
 
 const POLL_INTERVAL = 2500
@@ -12,27 +13,39 @@ export default function RoomPage() {
   const navigate = useNavigate()
   const [room, setRoom] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
   const [copied, setCopied] = useState(false)
   const pollingRef = useRef(null)
+  const clientRef = useRef(null);
 
   const token = getToken()
   const me = token ? decodeToken(token) : {}
-  const myUsername = me?.sub || me?.username
+  // JWT của identity-service dùng sub = userId (UUID)
+  const myUserId = me?.sub
+
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     const init = async () => {
       try {
         if (roomId === 'new') {
-          const res = await createRoom()
-          setRoom(res.data?.data || res.data)
+
+          // BƯỚC CHẶN: Nếu đã chạy rồi thì return luôn, không gọi API nữa
+          if (initializedRef.current) return
+          initializedRef.current = true
+
+          // Tạo phòng mới — backend trả về RoomResponse
+          const roomData = await createRoom()
+          // roomData = { roomId, hostUsername, guestUsername, status, createdAt }
+          setRoom(roomData)
         } else {
-          const res = await getRoom(roomId)
-          setRoom(res.data?.data || res.data)
+          // Join phòng có sẵn
+          const roomData = await joinRoom(roomId)
+          setRoom(roomData)
         }
-      } catch {
-        // TODO: remove mock
-        setRoom({ ...MOCK_ROOM, id: roomId === 'new' ? 'ROOM-4829' : roomId })
+      } catch (err) {
+        setError(err.message)
       } finally {
         setLoading(false)
       }
@@ -41,40 +54,79 @@ export default function RoomPage() {
   }, [roomId])
 
   useEffect(() => {
-    if (!room || room.player2) return
-    pollingRef.current = setInterval(async () => {
-      try {
-        const res = await getRoom(room.id)
-        const updated = res.data?.data || res.data
-        setRoom(updated)
-        if (updated.player2) clearInterval(pollingRef.current)
-      } catch { /* still waiting */ }
-    }, POLL_INTERVAL)
-    return () => clearInterval(pollingRef.current)
-  }, [room?.id, room?.player2])
+  if (!room?.roomId) return;
+
+  // Khởi tạo STOMP Client
+  const stompClient = new Client({
+    webSocketFactory: () => new SockJS('/ws'),
+    connectHeaders: { Authorization: `Bearer ${token}` },
+    onConnect: () => {
+      // Đăng ký nghe kênh riêng của phòng này
+      stompClient.subscribe(`/topic/room/${room.roomId}`, (msg) => {
+        const updatedRoom = JSON.parse(msg.body);
+        setRoom(updatedRoom); // Khi có tin nhắn, cập nhật ngay lập tức
+        console.log("Cập nhật phòng real-time:", updatedRoom);
+      });
+
+    // 2. NGHE KÊNH RIÊNG: Lệnh bắt đầu trận đấu từ Server (MatchService)
+      stompClient.subscribe('/user/queue/status', (msg) => {
+        let payload = {};
+        try { payload = JSON.parse(msg.body); } catch (e) { /* ignore */ }
+        
+        if (payload.status === 'ONGOING' && payload.id) {
+            if (clientRef.current) clientRef.current.deactivate();
+            navigate(`/game/${payload.id}`);
+        }
+      });
+    },
+  });
+
+  stompClient.activate();
+  clientRef.current = stompClient;
+
+  // Cleanup: Ngắt kết nối khi rời trang
+  return () => {
+    if (clientRef.current) clientRef.current.deactivate();
+  };
+}, [room?.roomId]); // Chỉ chạy lại nếu ID phòng thay đổi
 
   const handleStart = async () => {
-    if (!room?.player2) return
+    if (!room?.guestUsername) return
     setStarting(true)
     try {
-      const res = await startRoom(room.id)
-      const gameId = res.data?.data?.id || res.data?.id || room.id
-      navigate(`/game/${gameId}`)
-    } catch {
-      navigate(`/game/${room.id}`) // TODO: remove mock
+      // POST /matches/{roomId} → tạo trận từ phòng
+      // Backend trả về MatchResponse: { id, matchType, player1Id, player2Id, status, startTime, ... }
+      const matchData = await startRoom(room.roomId)
+      // navigate(`/game/${matchData.id}`)
+    } catch (err) {
+      setError(err.message)
     } finally {
       setStarting(false)
     }
   }
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(room.id).then(() => {
+    navigator.clipboard.writeText(room.roomId).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }
 
-  const isHost = room?.player1?.username === myUsername
+  const handleBack = async () => {
+    if (room?.roomId) {
+      try {
+        await leaveRoom(room.roomId); // Gọi API để xóa/cập nhật phòng trong Redis
+      } catch (e) {
+        console.error("Lỗi khi rời phòng:", e)
+      }
+    }
+    navigate('/pvp');
+  }
+
+  // Host là người tạo phòng
+  const isHost = room?.hostUsername && myUserId
+    ? room.hostUsername === myUserId
+    : false
 
   if (loading) {
     return (
@@ -85,10 +137,19 @@ export default function RoomPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className={styles.centered}>
+        <p className={styles.error}>{error}</p>
+        <button onClick={() => navigate('/pvp')}>← Quay lại</button>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate('/pvp')}>
+        <button className={styles.backBtn} onClick={handleBack}>
           ← Quay lại
         </button>
         <span className={styles.logo}>🏠 Phòng chờ</span>
@@ -99,7 +160,8 @@ export default function RoomPage() {
         <div className={styles.roomIdBox}>
           <span className={styles.roomIdLabel}>ID Phòng</span>
           <div className={styles.roomIdRow}>
-            <span className={styles.roomIdValue}>{room?.id}</span>
+            {/* roomId là field đúng từ RoomResponse */}
+            <span className={styles.roomIdValue}>{room?.roomId}</span>
             <button className={styles.copyBtn} onClick={handleCopyId} title="Sao chép">
               {copied ? '✅' : '📋'}
             </button>
@@ -108,18 +170,19 @@ export default function RoomPage() {
         </div>
 
         <div className={styles.playersRow}>
+          {/* hostUsername là string (userId) từ backend */}
           <PlayerSlot
-            player={room?.player1}
+            username={room?.hostUsername}
             label="Người chơi 1"
-            isMe={room?.player1?.username === myUsername}
+            isMe={room?.hostUsername === myUserId}
           />
           <div className={styles.vsBlock}>
             <span className={styles.vsText}>VS</span>
           </div>
           <PlayerSlot
-            player={room?.player2}
+            username={room?.guestUsername}
             label="Người chơi 2"
-            isMe={room?.player2?.username === myUsername}
+            isMe={room?.guestUsername === myUserId}
             waiting
           />
         </div>
@@ -128,9 +191,13 @@ export default function RoomPage() {
           <button
             className={styles.btnStart}
             onClick={handleStart}
-            disabled={!room?.player2 || starting}
+            disabled={!room?.guestUsername || starting}
           >
-            {starting ? 'Đang bắt đầu...' : !room?.player2 ? '⏳ Chờ đối thủ vào phòng...' : '🎮 Bắt đầu trận đấu'}
+            {starting
+              ? 'Đang bắt đầu...'
+              : !room?.guestUsername
+              ? '⏳ Chờ đối thủ vào phòng...'
+              : '🎮 Bắt đầu trận đấu'}
           </button>
         ) : (
           <p className={styles.waitingHint}>
@@ -143,26 +210,21 @@ export default function RoomPage() {
   )
 }
 
-function PlayerSlot({ player, isMe, label, waiting }) {
+// username ở đây là userId (UUID string) từ backend
+function PlayerSlot({ username, isMe, label, waiting }) {
   return (
-    <div className={`${styles.playerSlot} ${isMe ? styles.playerSlotMe : ''} ${!player ? styles.playerSlotEmpty : ''}`}>
+    <div className={`${styles.playerSlot} ${isMe ? styles.playerSlotMe : ''} ${!username ? styles.playerSlotEmpty : ''}`}>
       <div className={styles.avatarWrap}>
-        {player ? (
-          player.avatar
-            ? <img src={player.avatar} alt="" className={styles.avatarImg} />
-            : <span className={styles.avatarFallback}>{player.username[0].toUpperCase()}</span>
+        {username ? (
+          <span className={styles.avatarFallback}>{username[0].toUpperCase()}</span>
         ) : (
           <span className={styles.avatarEmpty}>?</span>
         )}
         {isMe && <span className={styles.meBadge}>Bạn</span>}
       </div>
 
-      {player ? (
-        <>
-          <p className={styles.playerName}>{player.username}</p>
-          {player.name && <p className={styles.playerDisplayName}>{player.name}</p>}
-          <div className={styles.eloChip}>⚡ {player.elo ?? '—'}</div>
-        </>
+      {username ? (
+        <p className={styles.playerName}>{username}</p>
       ) : (
         <>
           <p className={styles.emptyLabel}>{label}</p>

@@ -2,6 +2,7 @@ package com.game.ai_model_service.controller;
 
 import com.game.ai_model_service.dto.request.AiModelCreationRequest;
 import com.game.ai_model_service.dto.request.AiModelUpdateRequest;
+import com.game.ai_model_service.dto.response.AiModelAdminResponse;
 import com.game.ai_model_service.dto.response.AiModelResponse;
 import com.game.ai_model_service.dto.response.ApiResponse;
 import com.game.ai_model_service.service.AiModelService;
@@ -32,6 +33,13 @@ public class AiModelController {
                 .build();
     }
 
+    @GetMapping("/getAllByAdmin")
+    public ApiResponse<List<AiModelAdminResponse>> getAllAiModelsAdmin() {
+        return ApiResponse.<List<AiModelAdminResponse>>builder()
+                .result(aiModelService.getAllAiModelsAdmin())
+                .build();
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<AiModelResponse> getAiModelById(@PathVariable UUID id) {
         return ApiResponse.<AiModelResponse>builder()
@@ -40,7 +48,6 @@ public class AiModelController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AiModelResponse> createAiModel(@RequestBody @Valid AiModelCreationRequest request) {
         return ApiResponse.<AiModelResponse>builder()
                 .result(aiModelService.createAiModel(request))
@@ -48,7 +55,6 @@ public class AiModelController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AiModelResponse> updateAiModel(@PathVariable UUID id,
                                                        @RequestBody AiModelUpdateRequest request) {
         return ApiResponse.<AiModelResponse>builder()
@@ -57,7 +63,6 @@ public class AiModelController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteAiModel(@PathVariable UUID id) {
         aiModelService.deleteAiModel(id);
         return ApiResponse.<Void>builder()

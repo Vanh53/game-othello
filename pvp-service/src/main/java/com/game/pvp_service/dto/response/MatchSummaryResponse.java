@@ -16,6 +16,7 @@ public class MatchSummaryResponse {
     private UUID id;
     private String matchType;
     private UUID opponentId;
+    private String opponentName;
     private String result;
     private int myScore;
     private int opponentScore;
