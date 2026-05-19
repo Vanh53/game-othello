@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { joinMatchmaking, leaveMatchmaking } from '../api/gameService'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
+import { getToken } from '../utils/auth'
 import styles from './PvPMenuPage.module.css'
 
 // view: 'menu' | 'searching' | 'findRoom'
@@ -13,35 +16,44 @@ export default function PvPMenuPage() {
   // matchmaking
   const [searchSeconds, setSearchSeconds] = useState(0)
   const timerRef = useRef(null)
-  const pollingRef = useRef(null)
+  const clientRef = useRef(null)
+  const subscriptionRef = useRef(null)
 
-  // Bắt đầu tìm ngẫu nhiên
+  // Bắt đầu tìm ngẫu nhiên — sử dụng SockJS + STOMP (WebSocket)
   const handleRandom = async () => {
     setView('searching')
     setSearchSeconds(0)
-    try {
-      const res = await joinMatchmaking()
-      const gameId = res.data?.data?.id || res.data?.id
-      if (gameId) {
-        navigate(`/game/${gameId}`)
-        return
-      }
-    } catch {
-      // TODO: remove mock — giả lập tìm thấy sau 3s
-    }
-    // Polling mỗi 3s
-    pollingRef.current = setInterval(async () => {
-      try {
-        const res = await joinMatchmaking()
-        const gameId = res.data?.data?.id || res.data?.id
-        if (gameId) {
-          clearAll()
-          navigate(`/game/${gameId}`)
-        }
-      } catch {
-        // vẫn đang chờ
-      }
-    }, 3000)
+
+    // tạo client STOMP qua SockJS
+    const token = getToken()
+    const sockUrl = '/ws' // proxy (vite/nginx) sẽ chuyển tiếp tới backend
+    const stompClient = new Client({
+      webSocketFactory: () => new SockJS(sockUrl),
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      debug: () => {},
+      onConnect: () => {
+        // subscribe nhận trạng thái riêng cho user
+        subscriptionRef.current = stompClient.subscribe('/user/queue/status', (msg) => {
+          let payload = {}
+          try { payload = JSON.parse(msg.body) } catch (e) { payload = { data: msg.body } }
+          const gameId = payload?.id || payload?.result?.id || payload?.data?.result?.id || payload?.data?.id || payload?.gameId
+          if (gameId) {
+            clearAll()
+            navigate(`/game/${gameId}`)
+          }
+        })
+
+        // gửi yêu cầu join matchmaking
+        stompClient.publish({ destination: '/app/game.join', body: '' })
+      },
+      onStompError: (frame) => {
+        // fallback: giữ trạng thái searching, có thể log
+        console.error('STOMP error', frame)
+      },
+    })
+
+    clientRef.current = stompClient
+    stompClient.activate()
   }
 
   // Đếm giây khi đang tìm
@@ -56,7 +68,14 @@ export default function PvPMenuPage() {
 
   const clearAll = () => {
     clearInterval(timerRef.current)
-    clearInterval(pollingRef.current)
+    if (subscriptionRef.current && subscriptionRef.current.unsubscribe) {
+      try { subscriptionRef.current.unsubscribe() } catch (e) { /* ignore */ }
+      subscriptionRef.current = null
+    }
+    if (clientRef.current) {
+      try { clientRef.current.deactivate() } catch (e) { /* ignore */ }
+      clientRef.current = null
+    }
   }
 
   const handleCancelSearch = async () => {

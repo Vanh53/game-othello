@@ -9,7 +9,7 @@ import com.game.leaderboard_service.entity.UserStats;
 @Mapper(componentModel = "spring")
 public interface LeaderboardMapper {
 
-    @Mapping(target = "userId", expression = "java(userStats.getUserId().toString())")
+    @Mapping(target = "userId", ignore = true)
     @Mapping(target = "rank", ignore = true)
     @Mapping(target = "winRate", ignore = true)
     LeaderboardEntryResponse toLeaderboardEntry(UserStats userStats);

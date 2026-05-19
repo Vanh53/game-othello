@@ -10,7 +10,7 @@ data:
   REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
   KAFKA_SERVERS: "kafka-service:9092"
-  GAME_OTHELLO_URL: "http://game-othello-service:8080"
+  GAME_OTHELLO_URL: "http://identity-service:8080"
   AI_MODEL_URL: "http://ai-model-service:8082"
   PVP_SERVICE_URL: "http://pvp-service:8084"
   LEADERBOARD_URL: "http://leaderboard-service:8083"

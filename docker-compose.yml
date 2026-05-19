@@ -1,19 +1,20 @@
-version: '3.9'
-
 services:
   # ─── Infrastructure ───────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17
     container_name: postgres
+    env_file:
+      - ./.env
     environment:
-      POSTGRES_DB: othello_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.template.sql
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -23,8 +24,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    env_file:
+      - ./.env
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -34,6 +37,8 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
+    env_file:
+      - ./.env
     ports:
       - "9092:9092"
     environment:
@@ -58,48 +63,51 @@ services:
       start_period: 30s
 
   # ─── Backend Services ─────────────────────────────────────────
-  game-othello:
-    build: ./game-othello
-    container_name: game-othello
-    ports:
-      - "8080:8080"
+  identity-service:
+    build: ./identity-service
+    env_file:
+      - ./.env
+    expose:
+      - "${IDENTITY_SERVICE_PORT}"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_user
-      DB_USERNAME: user_service_acc
-      DB_PASSWORD: UserPassword@123
-      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+      DB_URL_IDENTITY: ${DB_URL_IDENTITY_DOCKER}
+      DB_USERNAME_IDENTITY: ${DB_USERNAME_IDENTITY}
+      DB_PASSWORD_IDENTITY: ${DB_PASSWORD_IDENTITY}
+      EUREKA_URL: http://service-registry:8761/eureka/
     depends_on:
       postgres:
         condition: service_healthy
 
   ai-model-service:
     build: ./ai-model-service
-    container_name: ai-model-service
-    ports:
-      - "8082:8082"
+    env_file:
+      - ./.env
+    expose:
+      - "${AI_MODEL_SERVICE_PORT}"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_ai
-      DB_USERNAME: ai_service_acc
-      DB_PASSWORD: AiPassword@123
-      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
+      DB_URL_AI_MODEL: ${DB_URL_AI_MODEL_DOCKER}
+      DB_USERNAME_AI_MODEL: ${DB_USERNAME_AI_MODEL}
+      DB_PASSWORD_AI_MODEL: ${DB_PASSWORD_AI_MODEL}
+      EUREKA_URL: http://service-registry:8761/eureka/
     depends_on:
       postgres:
         condition: service_healthy
 
   pvp-service:
     build: ./pvp-service
-    container_name: pvp-service
-    ports:
-      - "8084:8084"
+    env_file:
+      - ./.env
+    expose:
+      - "${PVP_SERVICE_PORT}"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_pvp
-      DB_USERNAME: pvp_service_acc
-      DB_PASSWORD: PvpPassword@123
+      DB_URL_PVP: ${DB_URL_PVP_DOCKER}
+      DB_USERNAME_PVP: ${DB_USERNAME_PVP}
+      DB_PASSWORD_PVP: ${DB_PASSWORD_PVP}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_SERVERS: kafka:9092
-      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
-      GAME_OTHELLO_URL: http://game-othello:8080
+      EUREKA_URL: http://service-registry:8761/eureka/
+      PVP_IDENTITY_SERVICE_URL: ${PVP_IDENTITY_SERVICE_URL_DOCKER}
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,16 +118,16 @@ services:
 
   leaderboard-service:
     build: ./leaderboard-service
-    container_name: leaderboard-service
-    ports:
-      - "8083:8083"
+    env_file:
+      - ./.env
+    expose:
+      - "${LEADERBOARD_SERVICE_PORT}"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/othello_db?currentSchema=schema_leaderboard
-      DB_USERNAME: leaderboard_service_acc
-      DB_PASSWORD: LeaderPassword@123
+      DB_URL_LEADERBOARD: ${DB_URL_LEADERBOARD_DOCKER}
+      DB_USERNAME_LEADERBOARD: ${DB_USERNAME_LEADERBOARD}
+      DB_PASSWORD_LEADERBOARD: ${DB_PASSWORD_LEADERBOARD}
       KAFKA_SERVERS: kafka:9092
-      JWT_SIGNER_KEY: a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7
-      GAME_OTHELLO_URL: http://game-othello:8080
+      EUREKA_URL: http://service-registry:8761/eureka/
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,28 +135,49 @@ services:
         condition: service_healthy
 
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: ./api-gateway
     container_name: api-gateway
+    env_file:
+      - ./.env
     ports:
-      - "8888:8888"
+      - "${API_GATEWAY_PORT}:8888"
     environment:
-      GAME_OTHELLO_URL: http://game-othello:8080
-      AI_MODEL_URL: http://ai-model-service:8082
-      PVP_SERVICE_URL: http://pvp-service:8084
-      LEADERBOARD_URL: http://leaderboard-service:8083
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_URL: http://service-registry:8761/eureka/
     depends_on:
-      - game-othello
+      - identity-service
       - ai-model-service
       - pvp-service
       - leaderboard-service
 
   frontend:
-    build: ./frontend/othello-frontend
+    build:
+      context: ./frontend/othello-frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_MEZON_CLIENT_ID: ${VITE_MEZON_CLIENT_ID}
+        VITE_MEZON_AUTH_URL: ${VITE_MEZON_AUTH_URL}
+        VITE_GOOGLE_AUTH_URL: ${VITE_GOOGLE_AUTH_URL}
     container_name: frontend
     ports:
-      - "3000:80"
+      - "${FRONTEND_HOST_PORT:-3000}:80"
     depends_on:
       - api-gateway
+
+  service-registry:
+    build: ./service-registry
+    container_name: service-registry
+    env_file:
+      - ./.env
+    ports:
+      - "${SERVICE_REGISTRY_PORT}:8761"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

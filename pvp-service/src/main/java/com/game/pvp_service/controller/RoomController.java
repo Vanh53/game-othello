@@ -2,6 +2,7 @@ package com.game.pvp_service.controller;
 
 import java.util.List;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +31,8 @@ public class RoomController {
 
     @PostMapping
     public ApiResponse<RoomResponse> createRoom() {
-        RoomResponse roomResponse = roomService.createRoom();
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        RoomResponse roomResponse = roomService.createRoom(username);
         return ApiResponse.<RoomResponse>builder()
                 .result(roomResponse)
                 .build();

@@ -1,5 +1,6 @@
 package com.game.leaderboard_service.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -36,15 +37,19 @@ public class LeaderboardService {
 
         Page<UserStats> userPage = userStatsRepository.findAllByOrderByEloDescTotalMatchesDesc(PageRequest.of(page, size));
 
-        List<LeaderboardEntryResponse> entries = IntStream.range(0, userPage.getContent().size())
-                .mapToObj(i -> {
-                    UserStats stats = userPage.getContent().get(i);
-                    LeaderboardEntryResponse entry = leaderboardMapper.toLeaderboardEntry(stats);
-                    entry.setRank(page * size + i + 1);
-                    entry.setWinRate(calcWinRate(stats.getTotalWins(), stats.getTotalMatches()));
-                    return entry;
-                })
-                .toList();
+        List<UserStats> listUserStats = userPage.getContent();
+
+        List<LeaderboardEntryResponse> entries = new ArrayList<>();
+
+        int index = 0;
+        for(UserStats userStats: listUserStats) {
+            LeaderboardEntryResponse entry  = leaderboardMapper.toLeaderboardEntry(userStats);
+            entry.setUserId(userStats.getUserId().toString());
+            entry.setWinRate(calcWinRate(userStats.getTotalWins(), userStats.getTotalMatches()));
+            entry.setRank(page * size + index + 1);
+            entries.add(entry);
+            index++;
+        }
 
         return LeaderboardResponse.builder()
                 .entries(entries)
@@ -58,17 +63,17 @@ public class LeaderboardService {
     public LeaderboardEntryResponse getUserRank(String userId) {
         UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
-        return buildEntry(stats);
+        return getRank(stats);
     }
 
     public LeaderboardEntryResponse getMyRank() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
-        return buildEntry(stats);
+        return getRank(stats);
     }
 
-    private LeaderboardEntryResponse buildEntry(UserStats stats) {
+    private LeaderboardEntryResponse getRank(UserStats stats) {
         long higherCount = userStatsRepository.countUsersWithHigherElo(stats.getElo(), stats.getTotalMatches());
         LeaderboardEntryResponse entry = leaderboardMapper.toLeaderboardEntry(stats);
         entry.setRank((int) higherCount + 1);

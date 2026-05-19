@@ -24,7 +24,8 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
             "/ai-models",
-            "/ai-models/{id}"
+            "/ai-models/{id}",
+            "/ai-models/getAllByAdmin"
     };
 
     @Value("${jwt.signerKey}")

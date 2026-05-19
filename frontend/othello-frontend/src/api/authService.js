@@ -1,17 +1,43 @@
-import api from './axiosInstance'
+import api, { unwrap } from './axiosInstance'
 
-// game-othello context-path: /othello
-export const login = (username, password) =>
-  api.post('/othello/auth/log-in', { username, password })
+/**
+ * Đăng nhập bằng username/password
+ * Backend trả về: { code, result: { token, authenticated } }
+ * @returns { token: string, authenticated: boolean }
+ */
+export const login = async (username, password) => {
+  const res = await api.post('/othello/auth/log-in', { username, password })
+  return unwrap(res) // { token, authenticated }
+}
 
-export const register = (data) =>
-  api.post('/othello/users', data)
+/**
+ * Đăng ký tài khoản mới
+ * Backend trả về: { code, result: { id, username, name, avatar, email, status } }
+ * @returns UserResponse
+ */
+export const register = async (data) => {
+  const res = await api.post('/othello/users', data)
+  return unwrap(res) // UserResponse
+}
 
-export const introspect = (token) =>
-  api.post('/othello/auth/introspect', { token })
+/**
+ * Kiểm tra token còn hợp lệ không
+ * Backend trả về: { code, result: { valid: boolean } }
+ * @returns { valid: boolean }
+ */
+export const introspect = async (token) => {
+  const res = await api.post('/othello/auth/introspect', { token })
+  return unwrap(res) // { valid }
+}
 
-export const loginWithGoogle = (code) =>
-  api.post('/othello/auth/google', { code })
+export const loginWithGoogle = async (code, state) => {
+  const res = await api.post('/othello/auth/google', { code, state })
+  return unwrap(res)
+}
 
-export const loginWithMezon = (code) =>
-  api.post('/othello/auth/mezon', { code })
+export const loginWithMezon = async (code, state) => {
+  const res = await api.post('/othello/auth/mezon', { code, state })
+  return unwrap(res)
+}
+  
+  

@@ -2,6 +2,7 @@ package com.game.ai_model_service.service;
 
 import com.game.ai_model_service.dto.request.AiModelCreationRequest;
 import com.game.ai_model_service.dto.request.AiModelUpdateRequest;
+import com.game.ai_model_service.dto.response.AiModelAdminResponse;
 import com.game.ai_model_service.dto.response.AiModelResponse;
 import com.game.ai_model_service.entity.AiModel;
 import com.game.ai_model_service.exception.AppException;
@@ -30,6 +31,15 @@ public class AiModelService {
     public List<AiModelResponse> getAllAiModels() {
         log.info("Fetching all AI models sorted by difficulty");
         return aiModelMapper.toListAiModelResponse(
+                aiModelRepository.findAll().stream()
+                        .sorted(Comparator.comparingInt(AiModel::getDifficultyLevel))
+                        .toList()
+        );
+    }
+
+    public List<AiModelAdminResponse> getAllAiModelsAdmin() {
+        log.info("Fetching all AI models sorted by difficulty");
+        return aiModelMapper.toListAiModelAdminResponse(
                 aiModelRepository.findAll().stream()
                         .sorted(Comparator.comparingInt(AiModel::getDifficultyLevel))
                         .toList()

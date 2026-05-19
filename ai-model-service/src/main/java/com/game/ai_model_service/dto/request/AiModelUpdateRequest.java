@@ -12,7 +12,9 @@ public class AiModelUpdateRequest {
 
     String name;
 
-    Integer difficultyLevel;
+    int difficultyLevel;
 
     String filePath;
+
+    String description;
 }

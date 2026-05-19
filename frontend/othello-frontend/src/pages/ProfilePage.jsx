@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMyProfile, updateMyProfile } from '../api/userService'
-import { MOCK_MY_PROFILE } from '../mock/mockData'
+import { getMyProfile, updateMyProfile, getMyRank, changeMyPassword } from '../api/userService'
 import styles from './ProfilePage.module.css'
 
 export default function ProfilePage() {
@@ -9,25 +8,77 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // edit state
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '' })
+  const [form, setForm] = useState({ name: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   useEffect(() => {
-    getMyProfile()
-      .then((res) => setProfile(res.data?.data || res.data))
-      .catch(() => setProfile(MOCK_MY_PROFILE)) // TODO: remove mock
+    Promise.all([getMyProfile(), getMyRank()])
+      .then(([profileData, rankData]) => {
+        // profileData = { id, username, name, avatar, email, status }
+        // rankData = { rank, userId, elo, totalMatches, totalWins, totalDraws, winRate }
+        setProfile({ ...profileData, ...rankData })
+      })
+      .catch(() => {
+        // nếu chưa có rank (user chưa chơi trận nào) thì chỉ lấy profile
+        getMyProfile().then(setProfile).catch(() => {})
+      })
       .finally(() => setLoading(false))
   }, [])
 
   const openEdit = () => {
-    setForm({ name: profile.name || '', email: profile.email || '' })
+    setForm({ name: profile.name || '' })
     setSaveError('')
     setSaveSuccess(false)
     setEditing(true)
+  }
+
+  const [changingPwd, setChangingPwd] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [pwdSaving, setPwdSaving] = useState(false)
+  const [pwdError, setPwdError] = useState('')
+  const [pwdSuccess, setPwdSuccess] = useState(false)
+
+  const openChangePassword = () => {
+    setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    setPwdError('')
+    setPwdSuccess(false)
+    setChangingPwd(true)
+  }
+
+  const handleChangePwdField = (e) => {
+    setPwdForm((p) => ({ ...p, [e.target.name]: e.target.value }))
+    setPwdError('')
+  }
+
+  const handleSavePassword = async (e) => {
+    e.preventDefault()
+    setPwdError('')
+    if (!pwdForm.currentPassword || !pwdForm.newPassword || !pwdForm.confirmPassword) {
+      setPwdError('Vui lòng nhập đầy đủ thông tin.')
+      return
+    }
+    if (pwdForm.newPassword.length < 6) {
+      setPwdError('Mật khẩu mới phải ít nhất 6 ký tự.')
+      return
+    }
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setPwdError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+
+    setPwdSaving(true)
+    try {
+      await changeMyPassword(pwdForm.currentPassword, pwdForm.newPassword)
+      setPwdSuccess(true)
+      setChangingPwd(false)
+    } catch (err) {
+      setPwdError(err.message || 'Đổi mật khẩu thất bại.')
+    } finally {
+      setPwdSaving(false)
+    }
   }
 
   const handleChange = (e) => {
@@ -37,19 +88,15 @@ export default function ProfilePage() {
 
   const handleSave = async (e) => {
     e.preventDefault()
-    if (!form.email.trim()) { setSaveError('Email không được để trống.'); return }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setSaveError('Email không hợp lệ.'); return }
     setSaving(true)
     try {
-      const res = await updateMyProfile(form)
-      setProfile((prev) => ({ ...prev, ...(res.data?.data || res.data || form) }))
+      // UserUpdateRequest chỉ có { name }
+      const updatedProfile = await updateMyProfile(profile.id, { name: form.name })
+      setProfile((prev) => ({ ...prev, ...updatedProfile }))
       setSaveSuccess(true)
       setEditing(false)
     } catch (err) {
-      // TODO: remove mock save
-      setProfile((prev) => ({ ...prev, ...form }))
-      setSaveSuccess(true)
-      setEditing(false)
+      setSaveError(err.message)
     } finally {
       setSaving(false)
     }
@@ -62,6 +109,7 @@ export default function ProfilePage() {
     p.totalMatches ? ((p.totalWins / p.totalMatches) * 100).toFixed(1) + '%' : '—'
 
   if (loading) return <div className={styles.centered}>Đang tải...</div>
+  if (!profile) return <div className={styles.centered}>Không tải được thông tin.</div>
 
   return (
     <div className={styles.page}>
@@ -122,7 +170,10 @@ export default function ProfilePage() {
           <div className={styles.editHeader}>
             <h3>Thông tin cá nhân</h3>
             {!editing && (
-              <button className={styles.editBtn} onClick={openEdit}>✏️ Chỉnh sửa</button>
+              <div className={styles.headerActions}>
+                <button className={styles.editBtn} onClick={openEdit}>✏️ Chỉnh sửa</button>
+                <button className={styles.changePwdBtn} onClick={openChangePassword}>🔒 Đổi mật khẩu</button>
+              </div>
             )}
           </div>
 
@@ -130,7 +181,61 @@ export default function ProfilePage() {
             <p className={styles.successMsg}>Cập nhật thành công!</p>
           )}
 
-          {editing ? (
+          {changingPwd ? (
+            <form onSubmit={handleSavePassword} className={styles.form} noValidate>
+              <div className={styles.field}>
+                <label htmlFor="currentPassword">Mật khẩu hiện tại</label>
+                <input
+                  id="currentPassword"
+                  name="currentPassword"
+                  type="password"
+                  value={pwdForm.currentPassword}
+                  onChange={handleChangePwdField}
+                  placeholder="Nhập mật khẩu hiện tại"
+                  disabled={pwdSaving}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="newPassword">Mật khẩu mới</label>
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  value={pwdForm.newPassword}
+                  onChange={handleChangePwdField}
+                  placeholder="Mật khẩu mới (ít nhất 6 ký tự)"
+                  disabled={pwdSaving}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={pwdForm.confirmPassword}
+                  onChange={handleChangePwdField}
+                  placeholder="Nhập lại mật khẩu mới"
+                  disabled={pwdSaving}
+                />
+              </div>
+              {pwdError && <p className={styles.errorMsg}>{pwdError}</p>}
+              {pwdSuccess && <p className={styles.successMsg}>Đổi mật khẩu thành công!</p>}
+              <div className={styles.formActions}>
+                <button type="submit" className={styles.btnSave} disabled={pwdSaving}>
+                  {pwdSaving ? 'Đang đổi...' : 'Lưu mật khẩu'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnCancel}
+                  onClick={() => setChangingPwd(false)}
+                  disabled={pwdSaving}
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          ) : editing ? (
             <form onSubmit={handleSave} className={styles.form} noValidate>
               <div className={styles.field}>
                 <label htmlFor="name">Tên hiển thị</label>
@@ -141,18 +246,6 @@ export default function ProfilePage() {
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Nhập tên hiển thị"
-                  disabled={saving}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="Nhập email"
                   disabled={saving}
                 />
               </div>

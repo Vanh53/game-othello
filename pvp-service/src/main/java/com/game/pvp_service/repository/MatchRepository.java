@@ -18,6 +18,8 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
     @Query("SELECT m FROM Match m WHERE (m.player1Id = :userId OR m.player2Id = :userId) AND m.status = 'ONGOING'")
     Optional<Match> findOngoingMatchByPlayerId(@Param("userId") UUID userId);
 
-    @Query("SELECT m FROM Match m WHERE (m.player1Id = :userId OR m.player2Id = :userId) ORDER BY m.startTime DESC")
+    @Query("SELECT m FROM Match m " +
+            "WHERE ((m.player1Id = :userId OR m.player2Id = :userId) AND m.status != 'ONGOING') " +
+            "ORDER BY m.startTime DESC")
     Page<Match> findByPlayerIdOrderByStartTimeDesc(@Param("userId") UUID userId, Pageable pageable);
 }

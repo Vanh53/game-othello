@@ -2,41 +2,74 @@ server:
   port: 8888
 
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   application:
-    name: api-gateway
+    name: ${API_GATEWAY_SERVICE_NAME:api-gateway}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   cloud:
     gateway:
-      mvc:
-        routes:
-          # game-othello: auth + users
-          - id: game-othello-route
-            uri: ${GAME_OTHELLO_URL:http://localhost:8080}
-            predicates:
-              - Path=/othello/**
+      routes:
+        # identity-service: auth + users
+        - id: identity-service-route
+          uri: ${IDENTITY_SERVICE_URL:lb://IDENTITY-SERVICE}
+          predicates:
+            - Path=/othello/**
+          filters:
+            - name: Retry
+              args:
+                retries: ${API_GATEWAY_RETRY_COUNT:3} # Thử lại tối đa 3 lần
+                statuses: BAD_GATEWAY, GATEWAY_TIMEOUT # Chỉ thử lại nếu lỗi mạng
+            # Rate limiting (Chống spam)
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10 # Số request sinh ra mỗi giây
+                redis-rate-limiter.burstCapacity: 20 # Số request tối đa dồn lại trong 1 giây
+                key-resolver: "#{@ipKeyResolver}"
 
-          # ai-model-service
-          - id: ai-model-route
-            uri: ${AI_MODEL_URL:http://localhost:8082}
-            predicates:
-              - Path=/ai-models/**
+        # ai-model-service
+        - id: ai-model-route
+          uri: ${AI_MODEL_URL:lb://AI-MODEL-SERVICE}
+          predicates:
+            - Path=/ai-models/**
+          filters:
+            - name: Retry
+              args:
+                retries: ${API_GATEWAY_RETRY_COUNT:3} # Thử lại tối đa 3 lần
+                statuses: BAD_GATEWAY, GATEWAY_TIMEOUT # Chỉ thử lại nếu lỗi mạng
 
-          # pvp-service: rooms, matches, ws
-          - id: pvp-route
-            uri: ${PVP_SERVICE_URL:http://localhost:8084}
-            predicates:
-              - Path=/rooms/**, /matches/**, /ws/**
+        # pvp-service: rooms, matches, ws
+        - id: pvp-route
+          uri: ${PVP_SERVICE_URL:lb://PVP-SERVICE}
+          predicates:
+            - Path=/rooms/**,/matches/**,/ws/**
+          filters:
+            - name: Retry
+              args:
+                retries: ${API_GATEWAY_RETRY_COUNT:3} # Thử lại tối đa 3 lần
+                statuses: BAD_GATEWAY, GATEWAY_TIMEOUT # Chỉ thử lại nếu lỗi mạng
 
-          # leaderboard-service
-          - id: leaderboard-route
-            uri: ${LEADERBOARD_URL:http://localhost:8083}
-            predicates:
-              - Path=/leaderboard/**
+        # leaderboard-service
+        - id: leaderboard-route
+          uri: ${LEADERBOARD_URL:lb://LEADERBOARD-SERVICE}
+          predicates:
+            - Path=/leaderboard/**
+          filters:
+            - name: Retry
+              args:
+                retries: ${API_GATEWAY_RETRY_COUNT:3} # Thử lại tối đa 3 lần
+                statuses: BAD_GATEWAY, GATEWAY_TIMEOUT # Chỉ thử lại nếu lỗi mạng
 
       globalcors:
         cors-configurations:
           '[/**]':
             allowedOrigins:
-              - "http://localhost:3000"
+              - "${API_GATEWAY_ALLOWED_ORIGIN:http://localhost:3000}"
             allowedMethods:
               - GET
               - POST
@@ -47,3 +80,19 @@ spring:
               - "*"
             allowCredentials: true
             maxAge: 3600
+
+app:
+  jwt:
+    signerKey: ${JWT_SIGNER_KEY}
+
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.server: DEBUG
+    com.othello.gateway: DEBUG

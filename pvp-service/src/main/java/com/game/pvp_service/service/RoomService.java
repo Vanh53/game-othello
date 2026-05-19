@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -39,9 +40,9 @@ public class RoomService {
     ObjectMapper objectMapper;
     RoomMapper roomMapper;
     MatchRepository matchRepository;
+    SimpMessagingTemplate messagingTemplate;
 
-    public RoomResponse createRoom() {
-        String hostUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+    public RoomResponse createRoom(String hostUsername) {
         if (isUserInWaitingRoom(hostUsername)) {
             throw new AppException(ErrorCode.ALREADY_IN_ROOM);
         }
@@ -78,6 +79,10 @@ public class RoomService {
 
     public RoomResponse joinRoom(String roomId) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return joinRoom(roomId, username);
+    }
+
+    public RoomResponse joinRoom(String roomId, String username) {
         Room room = getRoom(roomId).orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
         if ("FULL".equals(room.getStatus())) throw new AppException(ErrorCode.ROOM_IS_FULL);
@@ -86,7 +91,12 @@ public class RoomService {
         room.setGuestUsername(username);
         room.setStatus("FULL");
         updateRoom(room);
-        return roomMapper.toRoomResponse(room);
+
+        RoomResponse response = roomMapper.toRoomResponse(room);
+
+        // Bắn tín hiệu WebSocket cho Host (U1) biết Guest (U2) đã vào
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, response);
+        return response;
     }
 
     public RoomResponse leaveRoom(String roomId) {
@@ -110,7 +120,12 @@ public class RoomService {
             room.setStatus("WAITING");
             updateRoom(room);
         }
-        return roomMapper.toRoomResponse(room);
+
+        RoomResponse response = roomMapper.toRoomResponse(room);
+
+        // Bắn tín hiệu WebSocket báo rằng có người vừa rời đi
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, response);
+        return response;
     }
 
     public Optional<Room> getRoom(String roomId) {

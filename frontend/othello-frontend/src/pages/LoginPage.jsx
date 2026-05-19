@@ -1,11 +1,18 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { login } from '../api/authService'
-import { saveToken } from '../utils/auth'
+import { saveToken, getRole } from '../utils/auth'
 import styles from './LoginPage.module.css'
 
+const generateMezonState = () => {
+  const prefix = 'mezon'; // 5 ký tự
+  // Sinh ra 6 ký tự ngẫu nhiên từ chữ và số
+  const randomStr = Math.random().toString(36).substring(2, 8); 
+  return prefix + randomStr; 
+};
+
 const GOOGLE_AUTH_URL =
-  `https://accounts.google.com/o/oauth2/v2/auth?` +
+  `${import.meta.env.VITE_GOOGLE_AUTH_URL}` + '?' +
   `client_id=${import.meta.env.VITE_GOOGLE_CLIENT_ID}` +
   `&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth2/callback')}` +
   `&response_type=code&scope=openid%20email%20profile&state=google`
@@ -14,14 +21,17 @@ const MEZON_AUTH_URL =
   `${import.meta.env.VITE_MEZON_AUTH_URL}?` +
   `client_id=${import.meta.env.VITE_MEZON_CLIENT_ID}` +
   `&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth2/callback')}` +
-  `&response_type=code&state=mezon`
+  `&response_type=code` +
+  `&scope=openid%20offline` + 
+  `&state=${generateMezonState()}`
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const justRegistered = location.state?.registered === true
+  const redirectTo = location.state?.redirectTo
   const [form, setForm] = useState({ username: '', password: '' })
-  const [remember, setRemember] = useState(true)
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -39,32 +49,15 @@ export default function LoginPage() {
     setLoading(true)
     try {
       // TODO: remove mock login
-      if (form.username === 'user123' && form.password === 'user123') {
-        // JWT gia: payload { sub: 'user123', role: 'USER', exp: 9999999999 }
-        const fakeToken = [
-          'eyJhbGciOiJIUzI1NiJ9',
-          'eyJzdWIiOiJ1c2VyMTIzIiwicm9sZSI6IlVTRVIiLCJleHAiOjk5OTk5OTk5OTl9',
-          'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
-        ].join('.')
-        saveToken(fakeToken, remember)
-        navigate('/')
+      const authResponse = await login(form.username, form.password)
+      // authResponse = { token, authenticated } (đã unwrap từ axiosInstance)
+      saveToken(authResponse.token, remember)
+      const role = getRole()
+      if (String(role).includes('ADMIN')) {
+        navigate('/admin', { replace: true })
         return
       }
-      if (form.username === 'admin123' && form.password === 'admin123') {
-        // JWT gia: payload { sub: 'admin123', role: 'ADMIN', exp: 9999999999 }
-        const fakeToken = [
-          'eyJhbGciOiJIUzI1NiJ9',
-          'eyJzdWIiOiJhZG1pbjEyMyIsInJvbGUiOiJBRE1JTiIsImV4cCI6OTk5OTk5OTk5OX0',
-          'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
-        ].join('.')
-        saveToken(fakeToken, remember)
-        navigate('/')
-        return
-      }
-      const res = await login(form.username, form.password)
-      const token = res.data?.data?.token || res.data?.token
-      saveToken(token, remember)
-      navigate('/')
+      navigate(redirectTo || '/', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -127,6 +120,10 @@ export default function LoginPage() {
           <button type="submit" className={styles.btnPrimary} disabled={loading}>
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
+
+          <button type="button" className={styles.btnMachine}>
+            🤖 Đấu với máy
+          </button>
         </form>
 
         <div className={styles.divider}>
@@ -172,3 +169,4 @@ function MezonIcon() {
     </svg>
   )
 }
+

@@ -2,16 +2,12 @@ package com.game.pvp_service.service;
 
 import java.util.Set;
 
-import com.game.pvp_service.dto.response.MatchResponse;
-import com.game.pvp_service.entity.Room;
-import com.game.pvp_service.mapper.RoomMapper;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import com.game.pvp_service.dto.websocket.ErrorResponse;
-import com.game.pvp_service.entity.Match;
-import com.game.pvp_service.exception.ErrorCode;
+import com.game.pvp_service.dto.response.MatchResponse;
+import com.game.pvp_service.dto.response.RoomResponse;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +26,6 @@ public class MatchmakingService {
     SimpMessagingTemplate messagingTemplate;
     MatchService matchService;
     RoomService roomService;
-    RoomMapper roomMapper;
 
     public void joinQueue(String username, double elo) {
         redisTemplate.opsForZSet().add(QUEUE_KEY, username, elo);
@@ -60,6 +55,7 @@ public class MatchmakingService {
         if (cntAround < 2) return;
 
         Set<Object> around = redisTemplate.opsForZSet().rangeByScore(QUEUE_KEY, elo - 200, elo + 200);
+        if (around == null || around.isEmpty()) return;
 
         String player1 = username;
         String player2 = "";
@@ -71,13 +67,9 @@ public class MatchmakingService {
         }
         redisTemplate.opsForZSet().remove(QUEUE_KEY, player1, player2);
         log.info("Matching");
-        Room room = roomMapper.toRoom(roomService.createRoom());
-        MatchResponse matchResponse = matchService.createMatch(room.getRoomId().toString());
+        RoomResponse room = roomService.createRoom(player1);
+        roomService.joinRoom(room.getRoomId(), player2);
+        MatchResponse matchResponse = matchService.createMatch(room.getRoomId());
         log.info("Matched: {} vs {} -> matchId={}", player1, player2, matchResponse.getId());
-    }
-
-    private void sendError(String username, ErrorCode errorCode) {
-        messagingTemplate.convertAndSendToUser(username, "/queue/error",
-                ErrorResponse.builder().code(errorCode.getCode()).message(errorCode.getMessage()).build());
     }
 }

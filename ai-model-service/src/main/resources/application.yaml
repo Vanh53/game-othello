@@ -2,18 +2,27 @@ server:
   port: 8082
 
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   application:
-    name: ai-model-service
+    name: ${AI_MODEL_SERVICE_NAME:ai-model-service}
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/othello_db?currentSchema=schema_ai}
-    username: ${DB_USERNAME:ai_service_acc}
-    password: ${DB_PASSWORD:AiPassword@123}
+    url: ${DB_URL_AI_MODEL}
+    username: ${DB_USERNAME_AI_MODEL}
+    password: ${DB_PASSWORD_AI_MODEL}
     driver-class-name: org.postgresql.Driver
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  signerKey: ${JWT_SIGNER_KEY:a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7}
+  signerKey: ${JWT_SIGNER_KEY}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}

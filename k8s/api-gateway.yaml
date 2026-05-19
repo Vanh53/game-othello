@@ -21,7 +21,7 @@ spec:
         - containerPort: 8888
         env:
         - name: GAME_OTHELLO_URL
-          value: "http://game-othello-service:8080"
+          value: "http://identity-service:8080"
         - name: AI_MODEL_URL
           value: "http://ai-model-service:8082"
         - name: PVP_SERVICE_URL

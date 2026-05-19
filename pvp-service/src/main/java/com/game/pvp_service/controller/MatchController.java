@@ -1,7 +1,12 @@
 package com.game.pvp_service.controller;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.game.pvp_service.dto.response.ApiResponse;
 import com.game.pvp_service.dto.response.MatchResponse;
@@ -48,5 +53,15 @@ public class MatchController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.success(matchService.getMyHistory(username, page, size));
+    }
+
+    @GetMapping("/getHistoryById/{userId}")
+    public ApiResponse<PagedResponse<MatchSummaryResponse>> getHistoryById(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.<PagedResponse<MatchSummaryResponse>>builder()
+                .result(matchService.getHistoryById(userId, page, size))
+                .build();
     }
 }

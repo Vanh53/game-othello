@@ -1,12 +1,16 @@
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   application:
-    name: pvp-service
+    name: ${PVP_SERVICE_NAME:pvp-service}
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/othello_db?currentSchema=schema_pvp}
-    username: ${DB_USERNAME:pvp_service_acc}
-    password: ${DB_PASSWORD:PvpPassword@123}
+    url: ${DB_URL_PVP}
+    username: ${DB_USERNAME_PVP}
+    password: ${DB_PASSWORD_PVP}
     driver-class-name: org.postgresql.Driver
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -24,15 +28,22 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 server:
-  port: 8084
+  port: ${PVP_SERVICE_PORT:8084}
 
 jwt:
-  signerKey: ${JWT_SIGNER_KEY:a5ec3c15e4118e3bf5be7f45a02434dd577a9397a3896e0634b4512148f05aa7}
+  signerKey: ${JWT_SIGNER_KEY}
 
 kafka:
   topic:
-    match-result: match-result
+    match-result: ${KAFKA_TOPIC_MATCH_RESULT:match-result}
 
 services:
-  game-othello:
-    url: ${GAME_OTHELLO_URL:http://localhost:8080}
+  identity-service:
+    url: ${PVP_IDENTITY_SERVICE_URL}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${random.value}
