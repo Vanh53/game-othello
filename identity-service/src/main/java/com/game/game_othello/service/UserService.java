@@ -5,12 +5,14 @@ import com.game.game_othello.dto.request.UserCreationRequest;
 import com.game.game_othello.dto.request.UserUpdateRequest;
 import com.game.game_othello.dto.response.OpponentResponse;
 import com.game.game_othello.dto.response.UserResponse;
+import com.game.game_othello.entity.Account;
 import com.game.game_othello.entity.Role;
 import com.game.game_othello.entity.User;
 import com.game.game_othello.exception.AppException;
 import com.game.game_othello.exception.ErrorCode;
 import com.game.game_othello.exception.UserExitedException;
 import com.game.game_othello.mapper.UserMapper;
+import com.game.game_othello.repository.AccountRepository;
 import com.game.game_othello.repository.RoleRepository;
 import com.game.game_othello.repository.UserRepository;
 import lombok.AccessLevel;
@@ -37,13 +39,14 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserService {
     UserRepository userRepository;
+    AccountRepository accountRepository;
 
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
 
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
-        if (userRepository.existsByUsername(userCreationRequest.getUsername())) {
+        if (accountRepository.existsByProviderAndProviderAccountId("LOCAL", userCreationRequest.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
         if (userRepository.existsByEmail(userCreationRequest.getEmail())) {
@@ -62,9 +65,15 @@ public class UserService {
         roles.add(defaultRole);
 
         user.setRoles(roles);
-        user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
-
         User savedUser = userRepository.save(user);
+
+        Account account = Account.builder()
+                .userId(savedUser.getId())
+                .provider("LOCAL")
+                .providerAccountId(userCreationRequest.getUsername())
+                .password(passwordEncoder.encode(userCreationRequest.getPassword()))
+                .build();
+        accountRepository.save(account);
         return userMapper.toUserResponse(savedUser);
     }
 
@@ -76,7 +85,6 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getUsers() {
         log.info("In method get users");
         return userMapper.toListUserResponse(userRepository.findAll());

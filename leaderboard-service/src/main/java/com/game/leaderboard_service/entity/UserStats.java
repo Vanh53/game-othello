@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "user_stats", schema = "schema_leaderboard")
@@ -26,6 +28,7 @@ import lombok.experimental.FieldDefaults;
 public class UserStats {
 
     @Id
+    @JdbcTypeCode(SqlTypes.UUID)
     @Column(name = "user_id")
     UUID userId;
 

@@ -26,12 +26,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    @Column(nullable = false, unique = true)
-    String username;
-
-    @Column(nullable = false)
-    String password;
-
     String name;
 
     String avatar;
@@ -39,8 +33,10 @@ public class User {
     @Column(unique = true)
     String email;
 
+    @Builder.Default
     String status = "ACTIVE";
 
+    @Builder.Default
     @Column(name = "is_deleted")
     boolean isDeleted = false;
 

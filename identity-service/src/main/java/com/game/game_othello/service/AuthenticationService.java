@@ -4,11 +4,13 @@ import com.game.game_othello.dto.request.AuthenticationRequest;
 import com.game.game_othello.dto.request.IntrospectRequest;
 import com.game.game_othello.dto.response.AuthenticationResponse;
 import com.game.game_othello.dto.response.IntrospectResponse;
+import com.game.game_othello.entity.Account;
 import com.game.game_othello.entity.Role;
 import com.game.game_othello.entity.User;
 import com.game.game_othello.exception.AppException;
 import com.game.game_othello.exception.ErrorCode;
 import com.game.game_othello.exception.UserExitedException;
+import com.game.game_othello.repository.AccountRepository;
 import com.game.game_othello.repository.RoleRepository;
 import com.game.game_othello.repository.UserRepository;
 import com.nimbusds.jose.*;
@@ -48,6 +50,7 @@ public class AuthenticationService {
     UserRepository userRepository;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
+    AccountRepository accountRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -108,13 +111,14 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        var user = userRepository.findByUsername(request.getUsername())
+        var account = accountRepository.findByProviderAndProviderAccountId("LOCAL", request.getUsername())
                 .orElseThrow(() -> new UserExitedException(ErrorCode.USER_NOT_EXIST));
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        boolean authenticated = passwordEncoder.matches(request.getPassword(), account.getPassword());
         if (!authenticated)
             throw new AppException(ErrorCode.UNAUTHENTICATED);
-        var token = generateToken(user);
+        var user = userRepository.findById(account.getUserId());
+        var token = generateToken(user.get());
         return AuthenticationResponse.builder()
                 .token(token)
                 .authenticated(true)
@@ -199,19 +203,21 @@ public class AuthenticationService {
                     .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
             Set<Role> roles = new HashSet<>();
             roles.add(defaultRole);
-            // username = "google_" + sub để tránh trùng
-            String username = "google_" + googleSub;
 
             User newUser = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .email(email)
                     .name(name)
-                    .status("ACTIVE")
                     .avatar(picture)
                     .roles(roles)
                     .build();
-            return userRepository.save(newUser);
+            User savedUser = userRepository.save(newUser);
+            Account newAccount = Account.builder()
+                    .userId(savedUser.getId())
+                    .provider("GOOGLE")
+                    .providerAccountId(googleSub)
+                    .build();
+            accountRepository.save(newAccount);
+            return savedUser;
         });
 
         String jwt = generateToken(user);
@@ -281,19 +287,20 @@ public class AuthenticationService {
             Set<Role> roles = new HashSet<>();
             roles.add(defaultRole);
 
-            String username = "mezon_" + finalSub;
-            PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-
             User newUser = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .email(finalEmail)
                     .name(finalName)
-                    .status("ACTIVE")
                     .avatar(picture)
                     .roles(roles)
                     .build();
-            return userRepository.save(newUser);
+            User savedUser = userRepository.save(newUser);
+            Account newAccount = Account.builder()
+                    .userId(savedUser.getId())
+                    .provider("MEZON")
+                    .providerAccountId(mezonSub)
+                    .build();
+            accountRepository.save(newAccount);
+            return savedUser;
         });
 
         String jwt = generateToken(user);

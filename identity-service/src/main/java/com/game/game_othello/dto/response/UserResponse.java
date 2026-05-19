@@ -12,8 +12,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserResponse {
     UUID id;
-    String username;
-    String password;
     String name;
     String avatar;
     String email;
