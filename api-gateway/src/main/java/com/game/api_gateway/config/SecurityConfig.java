@@ -37,25 +37,14 @@ public class SecurityConfig {
     private String jwtSecret;
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(
-            ServerHttpSecurity http,
-            Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter
-    ) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-                // API Gateway thường dùng JWT/stateless nên tắt CSRF
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-
-                // Không dùng form login trong REST API / API Gateway
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
-
-                // Không dùng HTTP Basic nếu đã dùng JWT
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
-
-                // Không cần logout server-side nếu dùng JWT stateless
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
 
                 .authorizeExchange(exchange -> exchange
-
                         // Cho phép preflight CORS request
                         .pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
@@ -71,24 +60,11 @@ public class SecurityConfig {
 
                                 "/api/auth/**"
                         ).permitAll()
-
-                        // Ví dụ route chỉ ADMIN được vào
-                        .pathMatchers("/api/admin/**").hasRole("ADMIN")
-
-                        // Ví dụ route USER hoặc ADMIN được vào
-                        .pathMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
-
                         // Các request còn lại bắt buộc có token hợp lệ
                         .anyExchange().authenticated()
                 )
 
-                // Cấu hình Gateway là OAuth2 Resource Server dùng JWT
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter)
-                        )
-                )
-
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(org.springframework.security.config.Customizer.withDefaults()))
                 .build();
     }
 
@@ -101,31 +77,7 @@ public class SecurityConfig {
 
         return NimbusReactiveJwtDecoder
                 .withSecretKey(key)
-                .macAlgorithm(MacAlgorithm.HS256)
+                .macAlgorithm(MacAlgorithm.HS512)
                 .build();
-    }
-
-    @Bean
-    public Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authoritiesConverter =
-                new JwtGrantedAuthoritiesConverter();
-
-        /*
-         * Nếu trong JWT có claim:
-         *
-         * "roles": ["ADMIN", "USER"]
-         *
-         * thì Spring Security sẽ convert thành:
-         * ROLE_ADMIN, ROLE_USER
-         */
-        authoritiesConverter.setAuthoritiesClaimName("roles");
-        authoritiesConverter.setAuthorityPrefix("ROLE_");
-
-        JwtAuthenticationConverter jwtConverter =
-                new JwtAuthenticationConverter();
-
-        jwtConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
-
-        return new ReactiveJwtAuthenticationConverterAdapter(jwtConverter);
     }
 }

@@ -55,4 +55,8 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     Set<Role> roles = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    Set<UserPermission> userPermissions = new HashSet<>();
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import com.game.leaderboard_service.dto.request.UserStatsCreationRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -71,6 +72,15 @@ public class LeaderboardService {
         UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
         return getRank(stats);
+    }
+
+    public void createUser(UserStatsCreationRequest request) {
+        UserStats newUserStats = UserStats.builder()
+                .userId(request.getUserId())
+                .name(request.getName())
+                .avatar(request.getAvatar())
+                .build();
+        userStatsRepository.save(newUserStats);
     }
 
     private LeaderboardEntryResponse getRank(UserStats stats) {

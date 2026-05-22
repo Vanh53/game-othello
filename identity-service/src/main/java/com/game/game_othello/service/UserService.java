@@ -2,6 +2,7 @@ package com.game.game_othello.service;
 
 import com.game.game_othello.dto.request.OpponentsRequest;
 import com.game.game_othello.dto.request.UserCreationRequest;
+import com.game.game_othello.dto.request.UserStatsCreationRequest;
 import com.game.game_othello.dto.request.UserUpdateRequest;
 import com.game.game_othello.dto.response.OpponentResponse;
 import com.game.game_othello.dto.response.UserResponse;
@@ -15,6 +16,7 @@ import com.game.game_othello.mapper.UserMapper;
 import com.game.game_othello.repository.AccountRepository;
 import com.game.game_othello.repository.RoleRepository;
 import com.game.game_othello.repository.UserRepository;
+import com.game.game_othello.repository.httpclient.LeaderboardClient;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,8 @@ public class UserService {
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
 
+    LeaderboardClient leaderboardClient;
+
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         if (accountRepository.existsByProviderAndProviderAccountId("LOCAL", userCreationRequest.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -74,6 +78,14 @@ public class UserService {
                 .password(passwordEncoder.encode(userCreationRequest.getPassword()))
                 .build();
         accountRepository.save(account);
+
+        UserStatsCreationRequest request = UserStatsCreationRequest.builder()
+                .userId(savedUser.getId())
+                .name(savedUser.getName())
+                .avatar(savedUser.getAvatar())
+                .build();
+        leaderboardClient.createUserStats(request);
+
         return userMapper.toUserResponse(savedUser);
     }
 

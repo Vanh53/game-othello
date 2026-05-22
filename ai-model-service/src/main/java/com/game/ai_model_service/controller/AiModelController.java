@@ -1,21 +1,30 @@
 package com.game.ai_model_service.controller;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.game.ai_model_service.dto.request.AiModelCreationRequest;
 import com.game.ai_model_service.dto.request.AiModelUpdateRequest;
 import com.game.ai_model_service.dto.response.AiModelAdminResponse;
 import com.game.ai_model_service.dto.response.AiModelResponse;
 import com.game.ai_model_service.dto.response.ApiResponse;
 import com.game.ai_model_service.service.AiModelService;
+
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/ai-models")
@@ -34,6 +43,7 @@ public class AiModelController {
     }
 
     @GetMapping("/getAllByAdmin")
+    @PreAuthorize("hasAuthority('AI_MANAGE')")
     public ApiResponse<List<AiModelAdminResponse>> getAllAiModelsAdmin() {
         return ApiResponse.<List<AiModelAdminResponse>>builder()
                 .result(aiModelService.getAllAiModelsAdmin())
@@ -48,6 +58,7 @@ public class AiModelController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('AI_MANAGE')")
     public ApiResponse<AiModelResponse> createAiModel(@RequestBody @Valid AiModelCreationRequest request) {
         return ApiResponse.<AiModelResponse>builder()
                 .result(aiModelService.createAiModel(request))
@@ -55,6 +66,7 @@ public class AiModelController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('AI_MANAGE')")
     public ApiResponse<AiModelResponse> updateAiModel(@PathVariable UUID id,
                                                        @RequestBody AiModelUpdateRequest request) {
         return ApiResponse.<AiModelResponse>builder()
@@ -63,6 +75,7 @@ public class AiModelController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('AI_MANAGE')")
     public ApiResponse<Void> deleteAiModel(@PathVariable UUID id) {
         aiModelService.deleteAiModel(id);
         return ApiResponse.<Void>builder()

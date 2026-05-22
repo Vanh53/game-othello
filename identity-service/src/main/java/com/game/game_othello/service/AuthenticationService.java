@@ -4,9 +4,7 @@ import com.game.game_othello.dto.request.AuthenticationRequest;
 import com.game.game_othello.dto.request.IntrospectRequest;
 import com.game.game_othello.dto.response.AuthenticationResponse;
 import com.game.game_othello.dto.response.IntrospectResponse;
-import com.game.game_othello.entity.Account;
-import com.game.game_othello.entity.Role;
-import com.game.game_othello.entity.User;
+import com.game.game_othello.entity.*;
 import com.game.game_othello.exception.AppException;
 import com.game.game_othello.exception.ErrorCode;
 import com.game.game_othello.exception.UserExitedException;
@@ -41,6 +39,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -135,6 +134,7 @@ public class AuthenticationService {
                         Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli()
                 ))
                 .claim("scope", buildScope(user))
+                .claim("permissions", buildPermission(user))
                 .claim("name", user.getName())
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -154,6 +154,29 @@ public class AuthenticationService {
         StringJoiner stringJoiner = new StringJoiner(" ");
         for(Role role: roles) stringJoiner.add(role.getRoleName());
         return stringJoiner.toString();
+    }
+    private String buildPermission(User user) {
+
+        Set<String> effectivePermissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(Permission::getPermissionName)
+                .collect(Collectors.toSet());
+
+        Set<String> grantedPermissions = user.getUserPermissions().stream()
+                .filter(up -> up.getActionType() == ActionType.GRANT)
+                .map(up -> up.getPermission().getPermissionName())
+                .collect(Collectors.toSet());
+
+        Set<String> revokedPermissions = user.getUserPermissions().stream()
+                .filter(up -> up.getActionType() == ActionType.REVOKE)
+                .map(up -> up.getPermission().getPermissionName())
+                .collect(Collectors.toSet());
+
+        effectivePermissions.addAll(grantedPermissions);
+        effectivePermissions.removeAll(revokedPermissions);
+
+        String finalPermissions = String.join(" ", effectivePermissions);
+        return finalPermissions;
     }
 
     @SuppressWarnings("unchecked")
