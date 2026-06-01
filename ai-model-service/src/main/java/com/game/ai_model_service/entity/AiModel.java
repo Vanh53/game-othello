@@ -44,4 +44,8 @@ public class AiModel {
 
     @Column(name = "created_by")
     UUID createdBy;
+
+    @Builder.Default
+    @Column(name = "is_deleted")
+    boolean isDeleted = false;
 }

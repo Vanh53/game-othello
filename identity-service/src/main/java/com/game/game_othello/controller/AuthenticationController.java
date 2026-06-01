@@ -30,15 +30,6 @@ public class AuthenticationController {
                 .build();
     }
 
-    @PostMapping("/introspect")
-    ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request)
-            throws ParseException, JOSEException {
-        var result = authenticationService.introspect(request);
-        return ApiResponse.<IntrospectResponse>builder()
-                .result(result)
-                .build();
-    }
-
     @PostMapping("/google")
     ApiResponse<AuthenticationResponse> loginWithGoogle(@RequestBody GoogleAuthCodeRequest request) {
         var result = authenticationService.loginWithGoogle(request.getCode());

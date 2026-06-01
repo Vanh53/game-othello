@@ -11,16 +11,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-    @ExceptionHandler(value = Exception.class)
-    public ResponseEntity<ApiResponse<?>> handlingException(Exception exception) {
-        log.error("Lỗi hệ thống không xác định: ", exception);
-        ApiResponse<?> apiResponse = new ApiResponse<>();
-        apiResponse.setCode(ErrorCode.UNDEFINE.getCode());
-        apiResponse.setMessage(ErrorCode.UNDEFINE.getMessage());
-        return ResponseEntity
-                .status(ErrorCode.UNDEFINE.getStatusCode())
-                .body(apiResponse);
-    }
 
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse> handlingRuntimeException (RuntimeException exception) {

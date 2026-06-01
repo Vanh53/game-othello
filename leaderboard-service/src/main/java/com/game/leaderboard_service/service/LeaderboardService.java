@@ -36,7 +36,7 @@ public class LeaderboardService {
             throw new AppException(ErrorCode.INVALID_PAGE_SIZE);
         }
 
-        Page<UserStats> userPage = userStatsRepository.findAllByOrderByEloDescTotalMatchesDesc(PageRequest.of(page, size));
+        Page<UserStats> userPage = userStatsRepository.findAllByIsDeletedFalseOrderByEloDescTotalMatchesDesc(PageRequest.of(page, size));
 
         List<UserStats> listUserStats = userPage.getContent();
 
@@ -95,4 +95,23 @@ public class LeaderboardService {
         if (matches == 0) return 0.0;
         return Math.round((wins * 100.0 / matches) * 100.0) / 100.0;
     }
+
+    public void deleteUser(String userId) {
+        UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+        stats.setDeleted(true);
+        userStatsRepository.save(stats);
+    }
+
+    public void restoreUser(String userId) {
+        UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+        stats.setDeleted(false);
+        userStatsRepository.save(stats);
+    }
+
+
+    // bổ sung api gọi từ phía identity-service: update thông tin, update avatar, xóa user
+    // update xóa mềm
+
 }

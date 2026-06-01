@@ -41,6 +41,9 @@ services:
   identity-service:
     url: ${PVP_IDENTITY_SERVICE_URL}
 
+  leaderboard-service:
+    url: ${PVP_LEADERBOARD_SERVICE_URL}
+
 eureka:
   client:
     service-url:

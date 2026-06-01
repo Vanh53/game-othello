@@ -31,7 +31,7 @@ public class AiModelService {
     public List<AiModelResponse> getAllAiModels() {
         log.info("Fetching all AI models sorted by difficulty");
         return aiModelMapper.toListAiModelResponse(
-                aiModelRepository.findAll().stream()
+                aiModelRepository.findAllByIsDeletedFalse().stream()
                         .sorted(Comparator.comparingInt(AiModel::getDifficultyLevel))
                         .toList()
         );
@@ -77,11 +77,21 @@ public class AiModelService {
         return aiModelMapper.toAiModelResponse(aiModelRepository.save(aiModel));
     }
 
-    public void deleteAiModel(UUID id) {
+    // update xóa mềm
+
+    public void deleteAiModel(String id) {
         log.info("Deleting AI model with id: {}", id);
-        if (!aiModelRepository.existsById(id)) {
-            throw new AppException(ErrorCode.AI_MODEL_NOT_FOUND);
-        }
-        aiModelRepository.deleteById(id);
+        AiModel aiModel = aiModelRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new AppException(ErrorCode.AI_MODEL_NOT_FOUND));
+        aiModel.setDeleted(true);
+        aiModelRepository.save(aiModel);
+    }
+
+    public void restoreAiModel(String id) {
+        log.info("Restoring AI model with id: {}", id);
+        AiModel aiModel = aiModelRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new AppException(ErrorCode.AI_MODEL_NOT_FOUND));
+        aiModel.setDeleted(false);
+        aiModelRepository.save(aiModel);
     }
 }

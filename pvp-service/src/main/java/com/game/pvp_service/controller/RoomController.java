@@ -57,7 +57,6 @@ public class RoomController {
     }
 
     @PutMapping("/leave/{roomId}")
-    @PreAuthorize("hasAuthority('ROOM_LEAVE')")
     public ApiResponse<RoomResponse> leaveRoom(@PathVariable String roomId) {
         RoomResponse roomResponse = roomService.leaveRoom(roomId);
         return ApiResponse.<RoomResponse>builder()

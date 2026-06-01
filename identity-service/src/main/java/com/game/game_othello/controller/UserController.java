@@ -1,9 +1,6 @@
 package com.game.game_othello.controller;
 
-import com.game.game_othello.dto.request.ApiResponse;
-import com.game.game_othello.dto.request.OpponentsRequest;
-import com.game.game_othello.dto.request.UserCreationRequest;
-import com.game.game_othello.dto.request.UserUpdateRequest;
+import com.game.game_othello.dto.request.*;
 import com.game.game_othello.dto.response.OpponentResponse;
 import com.game.game_othello.dto.response.UserResponse;
 import com.game.game_othello.entity.User;
@@ -17,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @Slf4j
@@ -46,16 +44,10 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
+    @PreAuthorize("hasAuthority('USER_VIEW')")
     ApiResponse<UserResponse> getUser(@PathVariable String userId) {
         return ApiResponse.<UserResponse>builder()
                 .result(userService.getUser(userId))
-                .build();
-    }
-
-    @PostMapping("/opponents")
-    ApiResponse<List<OpponentResponse>> getOpponents(@RequestBody OpponentsRequest opponentsRequest) {
-        return ApiResponse.<List<OpponentResponse>>builder()
-                .result(userService.getOpponents(opponentsRequest))
                 .build();
     }
 
@@ -75,7 +67,9 @@ public class UserController {
                 .build();
     }
 
-    @DeleteMapping("/{userId}")
+    // update xóa mềm
+
+    @PutMapping("/{userId}/delete")
     @PreAuthorize("hasAuthority('USER_DELETE')")
     ApiResponse<String> deleteUser(@PathVariable String userId) {
         userService.deleteUser(userId);
@@ -83,4 +77,42 @@ public class UserController {
                 .result("Xóa User thành công")
                 .build();
     }
+
+    @PutMapping("/{userId}/restore")
+    @PreAuthorize("hasAuthority('USER_DELETE')")
+    ApiResponse<String> restoreUser(@PathVariable String userId) {
+        userService.restoreUser(userId);
+        return ApiResponse.<String>builder()
+                .result("Khôi phục User thành công")
+                .build();
+    }
+
+//    @PutMapping("/{userId}")
+//    @PreAuthorize("isAuthenticated()")
+//    ApiResponse<UserResponse> updateAvatar() {
+//        return ApiResponse.<UserResponse>builder()
+//                .result(userService.updateAvatar())
+//                .build();
+//    }
+
+    @PutMapping("/{userId}/changePassword")
+    @PreAuthorize("isAuthenticated()")
+    ApiResponse<String> changePassword(@RequestBody ChangePasswordRequest request, Principal principal) {
+        String userId = principal.getName();
+        userService.changePassword(request);
+        return ApiResponse.<String>builder()
+                .result("Change password successfully")
+                .build();
+    }
+
+
+
+//    @PutMapping("/{userId}")
+//    @PreAuthorize("hasAuthority('USER_MANAGE_PERMISSION') or hasAuthority('ALL_PERMISSION')")
+//    ApiResponse<String> updatePermission() {
+//        return ApiResponse.<UserResponse>builder()
+//                .result(userService.updatePermission())
+//                .build();
+//    }
+
 }

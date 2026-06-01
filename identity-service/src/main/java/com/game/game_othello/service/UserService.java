@@ -1,5 +1,6 @@
 package com.game.game_othello.service;
 
+import com.game.game_othello.dto.request.ChangePasswordRequest;
 import com.game.game_othello.dto.request.OpponentsRequest;
 import com.game.game_othello.dto.request.UserCreationRequest;
 import com.game.game_othello.dto.request.UserStatsCreationRequest;
@@ -99,7 +100,7 @@ public class UserService {
 
     public List<UserResponse> getUsers() {
         log.info("In method get users");
-        return userMapper.toListUserResponse(userRepository.findAll());
+        return userMapper.toListUserResponse(userRepository.findAllWithQuery());
     }
 
     public UserResponse getUser(String userId) {
@@ -122,7 +123,26 @@ public class UserService {
     }
 
     public void deleteUser(String userId) {
-        userRepository.deleteById(UUID.fromString(userId));
+        UUID userIdReal = UUID.fromString(userId);
+        User user = userRepository.findById(userIdReal)
+                .orElseThrow(() -> new RuntimeException(ErrorCode.USER_NOT_EXIST.getMessage()));
+        user.setDeleted(true);
+        userRepository.save(user);
+        leaderboardClient.deleteUserStats(userId);
     }
 
+    public void changePassword(ChangePasswordRequest request) {
+    }
+
+    public void restoreUser(String userId) {
+        UUID userIdReal = UUID.fromString(userId);
+        User user = userRepository.findById(userIdReal)
+                .orElseThrow(() -> new RuntimeException(ErrorCode.USER_NOT_EXIST.getMessage()));
+        user.setDeleted(false);
+        userRepository.save(user);
+        leaderboardClient.restoreUserStats(userId);
+    }
+
+
+    // thêm api: cập nhật quyền, cập nhật avt, đổi mật khẩu
 }

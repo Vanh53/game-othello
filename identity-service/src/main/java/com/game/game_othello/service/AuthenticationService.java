@@ -1,7 +1,6 @@
 package com.game.game_othello.service;
 
 import com.game.game_othello.dto.request.AuthenticationRequest;
-import com.game.game_othello.dto.request.IntrospectRequest;
 import com.game.game_othello.dto.response.AuthenticationResponse;
 import com.game.game_othello.dto.response.IntrospectResponse;
 import com.game.game_othello.entity.*;
@@ -17,7 +16,6 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.AccessLevel;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
@@ -95,24 +93,10 @@ public class AuthenticationService {
     @Value("${mezon.userinfo-url}")
     protected String MEZON_USERINFO_URL;
 
-    public IntrospectResponse introspect (IntrospectRequest request)
-            throws JOSEException, ParseException {
-        var token = request.getToken();
-        JWSVerifier jwsVerifier = new MACVerifier(SIGNER_KEY.getBytes());
-        SignedJWT signedJWT = SignedJWT.parse(token);
-
-        Date expTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        var verified = signedJWT.verify(jwsVerifier);
-        return IntrospectResponse.builder()
-                .valid(verified && expTime.after(new Date()))
-                .build();
-
-    }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var account = accountRepository.findByProviderAndProviderAccountId("LOCAL", request.getUsername())
                 .orElseThrow(() -> new UserExitedException(ErrorCode.USER_NOT_EXIST));
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         boolean authenticated = passwordEncoder.matches(request.getPassword(), account.getPassword());
         if (!authenticated)
             throw new AppException(ErrorCode.UNAUTHENTICATED);

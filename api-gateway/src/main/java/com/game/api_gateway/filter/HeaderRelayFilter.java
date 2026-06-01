@@ -26,7 +26,7 @@ public class HeaderRelayFilter implements GlobalFilter, Ordered {
 
                     ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                             .header("X-User-Id", userId)
-                            .header("X-User-Role", role != null ? role : "USER")
+                            .header("X-User-Roles", role != null ? role : "USER")
                             .header("X-User-Permissions", permissions != null ? permissions : "")
                             .build();
 

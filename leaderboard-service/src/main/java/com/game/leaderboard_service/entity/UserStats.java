@@ -58,4 +58,8 @@ public class UserStats {
     @UpdateTimestamp
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(name = "is_deleted")
+    boolean isDeleted = false;
 }

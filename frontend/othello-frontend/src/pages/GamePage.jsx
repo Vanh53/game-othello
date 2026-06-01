@@ -152,8 +152,8 @@ export default function GamePage() {
     
     const token = getToken()
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      webSocketFactory: () => new SockJS(token ? `/ws?token=${token}` : '/ws'),
+      // connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       debug: () => {},
       heartbeatOutgoing: 30000,  // Send heartbeat every 30s
       heartbeatIncoming: 30000,  // Expect heartbeat every 30s

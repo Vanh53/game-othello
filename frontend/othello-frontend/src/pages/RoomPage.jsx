@@ -39,6 +39,7 @@ export default function RoomPage() {
           const roomData = await createRoom()
           // roomData = { roomId, hostUsername, guestUsername, status, createdAt }
           setRoom(roomData)
+          // navigate(`/room/${roomData.roomId}`, { replace: true });
         } else {
           // Join phòng có sẵn
           const roomData = await joinRoom(roomId)
@@ -58,8 +59,9 @@ export default function RoomPage() {
 
   // Khởi tạo STOMP Client
   const stompClient = new Client({
-    webSocketFactory: () => new SockJS('/ws'),
-    connectHeaders: { Authorization: `Bearer ${token}` },
+    webSocketFactory: () =>
+      new SockJS(token ? `/ws?token=${encodeURIComponent(token)}` : '/ws'),
+    // connectHeaders: { Authorization: `Bearer ${token}` },
     onConnect: () => {
       // Đăng ký nghe kênh riêng của phòng này
       stompClient.subscribe(`/topic/room/${room.roomId}`, (msg) => {
@@ -98,6 +100,10 @@ export default function RoomPage() {
       // Backend trả về MatchResponse: { id, matchType, player1Id, player2Id, status, startTime, ... }
       const matchData = await startRoom(room.roomId)
       // navigate(`/game/${matchData.id}`)
+
+      // if (matchData?.id) {
+      //   navigate(`/game/${matchData.id}`);
+      // }
     } catch (err) {
       setError(err.message)
     } finally {

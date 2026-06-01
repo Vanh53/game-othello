@@ -28,8 +28,9 @@ export default function PvPMenuPage() {
     const token = getToken()
     const sockUrl = '/ws' // proxy (vite/nginx) sẽ chuyển tiếp tới backend
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS(sockUrl),
-      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      webSocketFactory: () =>
+        new SockJS(token ? `/ws?token=${encodeURIComponent(token)}` : '/ws'),
+      // connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       debug: () => {},
       onConnect: () => {
         // subscribe nhận trạng thái riêng cho user

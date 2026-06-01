@@ -35,7 +35,10 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
 
         // Bắt lỗi 503 (Khi các service con như PvP, Identity bị sập)
         if (ex instanceof ResponseStatusException responseStatusException) {
-            status = (HttpStatus) responseStatusException.getStatusCode();
+            HttpStatus resolvedStatus = HttpStatus.resolve(responseStatusException.getStatusCode().value());
+            if (resolvedStatus != null) {
+                status = resolvedStatus;
+            }
             errorMessage = responseStatusException.getReason();
         }
         // Bắt lỗi mạng (ConnectException)

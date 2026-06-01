@@ -25,6 +25,7 @@ public class LeaderboardController {
     LeaderboardService leaderboardService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<LeaderboardResponse> getLeaderboard(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -34,6 +35,7 @@ public class LeaderboardController {
     }
 
     @GetMapping("/users/{userId}")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<LeaderboardEntryResponse> getUserRank(@PathVariable String userId) {
         return ApiResponse.<LeaderboardEntryResponse>builder()
                 .result(leaderboardService.getUserRank(userId))
