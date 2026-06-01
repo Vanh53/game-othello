@@ -1,18 +1,23 @@
 package com.game.game_othello.service;
 
+import com.game.game_othello.dto.request.ChangePasswordRequest;
 import com.game.game_othello.dto.request.OpponentsRequest;
 import com.game.game_othello.dto.request.UserCreationRequest;
+import com.game.game_othello.dto.request.UserStatsCreationRequest;
 import com.game.game_othello.dto.request.UserUpdateRequest;
 import com.game.game_othello.dto.response.OpponentResponse;
 import com.game.game_othello.dto.response.UserResponse;
+import com.game.game_othello.entity.Account;
 import com.game.game_othello.entity.Role;
 import com.game.game_othello.entity.User;
 import com.game.game_othello.exception.AppException;
 import com.game.game_othello.exception.ErrorCode;
 import com.game.game_othello.exception.UserExitedException;
 import com.game.game_othello.mapper.UserMapper;
+import com.game.game_othello.repository.AccountRepository;
 import com.game.game_othello.repository.RoleRepository;
 import com.game.game_othello.repository.UserRepository;
+import com.game.game_othello.repository.httpclient.LeaderboardClient;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -37,13 +42,16 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserService {
     UserRepository userRepository;
+    AccountRepository accountRepository;
 
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
 
+    LeaderboardClient leaderboardClient;
+
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
-        if (userRepository.existsByUsername(userCreationRequest.getUsername())) {
+        if (accountRepository.existsByProviderAndProviderAccountId("LOCAL", userCreationRequest.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
         if (userRepository.existsByEmail(userCreationRequest.getEmail())) {
@@ -62,9 +70,23 @@ public class UserService {
         roles.add(defaultRole);
 
         user.setRoles(roles);
-        user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
-
         User savedUser = userRepository.save(user);
+
+        Account account = Account.builder()
+                .userId(savedUser.getId())
+                .provider("LOCAL")
+                .providerAccountId(userCreationRequest.getUsername())
+                .password(passwordEncoder.encode(userCreationRequest.getPassword()))
+                .build();
+        accountRepository.save(account);
+
+        UserStatsCreationRequest request = UserStatsCreationRequest.builder()
+                .userId(savedUser.getId())
+                .name(savedUser.getName())
+                .avatar(savedUser.getAvatar())
+                .build();
+        leaderboardClient.createUserStats(request);
+
         return userMapper.toUserResponse(savedUser);
     }
 
@@ -76,10 +98,9 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getUsers() {
         log.info("In method get users");
-        return userMapper.toListUserResponse(userRepository.findAll());
+        return userMapper.toListUserResponse(userRepository.findAllWithQuery());
     }
 
     public UserResponse getUser(String userId) {
@@ -102,7 +123,26 @@ public class UserService {
     }
 
     public void deleteUser(String userId) {
-        userRepository.deleteById(UUID.fromString(userId));
+        UUID userIdReal = UUID.fromString(userId);
+        User user = userRepository.findById(userIdReal)
+                .orElseThrow(() -> new RuntimeException(ErrorCode.USER_NOT_EXIST.getMessage()));
+        user.setDeleted(true);
+        userRepository.save(user);
+        leaderboardClient.deleteUserStats(userId);
     }
 
+    public void changePassword(ChangePasswordRequest request) {
+    }
+
+    public void restoreUser(String userId) {
+        UUID userIdReal = UUID.fromString(userId);
+        User user = userRepository.findById(userIdReal)
+                .orElseThrow(() -> new RuntimeException(ErrorCode.USER_NOT_EXIST.getMessage()));
+        user.setDeleted(false);
+        userRepository.save(user);
+        leaderboardClient.restoreUserStats(userId);
+    }
+
+
+    // thêm api: cập nhật quyền, cập nhật avt, đổi mật khẩu
 }

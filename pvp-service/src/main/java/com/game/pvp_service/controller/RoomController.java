@@ -2,6 +2,7 @@ package com.game.pvp_service.controller;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ public class RoomController {
     RoomService roomService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROOM_CREATE')")
     public ApiResponse<RoomResponse> createRoom() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         RoomResponse roomResponse = roomService.createRoom(username);
@@ -46,6 +48,7 @@ public class RoomController {
     }
 
     @PutMapping("/join/{roomId}")
+    @PreAuthorize("hasAuthority('ROOM_JOIN')")
     public ApiResponse<RoomResponse> joinRoom(@PathVariable String roomId) {
         RoomResponse roomResponse = roomService.joinRoom(roomId);
         return ApiResponse.<RoomResponse>builder()

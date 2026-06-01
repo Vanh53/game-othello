@@ -24,6 +24,10 @@ spring:
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
 
+services:
+  leaderboard-service:
+    url: ${IDENTITY_LEADERBOARD_SERVICE_URL}
+
 google:
   client-id: ${GOOGLE_CLIENT_ID}
   client-secret: ${GOOGLE_CLIENT_SECRET}

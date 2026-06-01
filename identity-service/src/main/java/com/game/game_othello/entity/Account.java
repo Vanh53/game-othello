@@ -3,7 +3,9 @@ package com.game.game_othello.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -23,11 +25,11 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    @Column(name = "user_id")
+    @Column(nullable = false, name = "user_id")
     @JdbcTypeCode(SqlTypes.UUID)
     UUID userId;
 
-    @Column(name = "provider")
+    @Column(nullable = false, name = "provider")
     String provider;
 
     @Column(name = "provider_account_id")
@@ -36,9 +38,11 @@ public class Account {
     @Column(name = "password")
     String password;
 
+    @CreationTimestamp
     @Column(name = "created_at")
     LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     LocalDateTime updateAt;
 }

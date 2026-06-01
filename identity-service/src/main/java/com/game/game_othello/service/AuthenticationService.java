@@ -1,14 +1,13 @@
 package com.game.game_othello.service;
 
 import com.game.game_othello.dto.request.AuthenticationRequest;
-import com.game.game_othello.dto.request.IntrospectRequest;
 import com.game.game_othello.dto.response.AuthenticationResponse;
 import com.game.game_othello.dto.response.IntrospectResponse;
-import com.game.game_othello.entity.Role;
-import com.game.game_othello.entity.User;
+import com.game.game_othello.entity.*;
 import com.game.game_othello.exception.AppException;
 import com.game.game_othello.exception.ErrorCode;
 import com.game.game_othello.exception.UserExitedException;
+import com.game.game_othello.repository.AccountRepository;
 import com.game.game_othello.repository.RoleRepository;
 import com.game.game_othello.repository.UserRepository;
 import com.nimbusds.jose.*;
@@ -17,7 +16,6 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.AccessLevel;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
@@ -39,6 +37,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -48,6 +47,7 @@ public class AuthenticationService {
     UserRepository userRepository;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
+    AccountRepository accountRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -93,28 +93,15 @@ public class AuthenticationService {
     @Value("${mezon.userinfo-url}")
     protected String MEZON_USERINFO_URL;
 
-    public IntrospectResponse introspect (IntrospectRequest request)
-            throws JOSEException, ParseException {
-        var token = request.getToken();
-        JWSVerifier jwsVerifier = new MACVerifier(SIGNER_KEY.getBytes());
-        SignedJWT signedJWT = SignedJWT.parse(token);
-
-        Date expTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        var verified = signedJWT.verify(jwsVerifier);
-        return IntrospectResponse.builder()
-                .valid(verified && expTime.after(new Date()))
-                .build();
-
-    }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        var user = userRepository.findByUsername(request.getUsername())
+        var account = accountRepository.findByProviderAndProviderAccountId("LOCAL", request.getUsername())
                 .orElseThrow(() -> new UserExitedException(ErrorCode.USER_NOT_EXIST));
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        boolean authenticated = passwordEncoder.matches(request.getPassword(), account.getPassword());
         if (!authenticated)
             throw new AppException(ErrorCode.UNAUTHENTICATED);
-        var token = generateToken(user);
+        var user = userRepository.findById(account.getUserId());
+        var token = generateToken(user.get());
         return AuthenticationResponse.builder()
                 .token(token)
                 .authenticated(true)
@@ -131,6 +118,7 @@ public class AuthenticationService {
                         Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli()
                 ))
                 .claim("scope", buildScope(user))
+                .claim("permissions", buildPermission(user))
                 .claim("name", user.getName())
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -150,6 +138,29 @@ public class AuthenticationService {
         StringJoiner stringJoiner = new StringJoiner(" ");
         for(Role role: roles) stringJoiner.add(role.getRoleName());
         return stringJoiner.toString();
+    }
+    private String buildPermission(User user) {
+
+        Set<String> effectivePermissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(Permission::getPermissionName)
+                .collect(Collectors.toSet());
+
+        Set<String> grantedPermissions = user.getUserPermissions().stream()
+                .filter(up -> up.getActionType() == ActionType.GRANT)
+                .map(up -> up.getPermission().getPermissionName())
+                .collect(Collectors.toSet());
+
+        Set<String> revokedPermissions = user.getUserPermissions().stream()
+                .filter(up -> up.getActionType() == ActionType.REVOKE)
+                .map(up -> up.getPermission().getPermissionName())
+                .collect(Collectors.toSet());
+
+        effectivePermissions.addAll(grantedPermissions);
+        effectivePermissions.removeAll(revokedPermissions);
+
+        String finalPermissions = String.join(" ", effectivePermissions);
+        return finalPermissions;
     }
 
     @SuppressWarnings("unchecked")
@@ -199,19 +210,21 @@ public class AuthenticationService {
                     .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
             Set<Role> roles = new HashSet<>();
             roles.add(defaultRole);
-            // username = "google_" + sub để tránh trùng
-            String username = "google_" + googleSub;
 
             User newUser = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .email(email)
                     .name(name)
-                    .status("ACTIVE")
                     .avatar(picture)
                     .roles(roles)
                     .build();
-            return userRepository.save(newUser);
+            User savedUser = userRepository.save(newUser);
+            Account newAccount = Account.builder()
+                    .userId(savedUser.getId())
+                    .provider("GOOGLE")
+                    .providerAccountId(googleSub)
+                    .build();
+            accountRepository.save(newAccount);
+            return savedUser;
         });
 
         String jwt = generateToken(user);
@@ -281,19 +294,20 @@ public class AuthenticationService {
             Set<Role> roles = new HashSet<>();
             roles.add(defaultRole);
 
-            String username = "mezon_" + finalSub;
-            PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-
             User newUser = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .email(finalEmail)
                     .name(finalName)
-                    .status("ACTIVE")
                     .avatar(picture)
                     .roles(roles)
                     .build();
-            return userRepository.save(newUser);
+            User savedUser = userRepository.save(newUser);
+            Account newAccount = Account.builder()
+                    .userId(savedUser.getId())
+                    .provider("MEZON")
+                    .providerAccountId(mezonSub)
+                    .build();
+            accountRepository.save(newAccount);
+            return savedUser;
         });
 
         String jwt = generateToken(user);

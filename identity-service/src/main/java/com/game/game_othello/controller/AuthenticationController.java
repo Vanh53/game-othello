@@ -1,9 +1,6 @@
 package com.game.game_othello.controller;
 
-import com.game.game_othello.dto.request.ApiResponse;
-import com.game.game_othello.dto.request.AuthenticationRequest;
-import com.game.game_othello.dto.request.GoogleAuthCodeRequest;
-import com.game.game_othello.dto.request.IntrospectRequest;
+import com.game.game_othello.dto.request.*;
 import com.game.game_othello.dto.response.AuthenticationResponse;
 import com.game.game_othello.dto.response.IntrospectResponse;
 import com.game.game_othello.service.AuthenticationService;
@@ -33,15 +30,6 @@ public class AuthenticationController {
                 .build();
     }
 
-    @PostMapping("/introspect")
-    ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request)
-            throws ParseException, JOSEException {
-        var result = authenticationService.introspect(request);
-        return ApiResponse.<IntrospectResponse>builder()
-                .result(result)
-                .build();
-    }
-
     @PostMapping("/google")
     ApiResponse<AuthenticationResponse> loginWithGoogle(@RequestBody GoogleAuthCodeRequest request) {
         var result = authenticationService.loginWithGoogle(request.getCode());
@@ -51,7 +39,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/mezon")
-    ApiResponse<AuthenticationResponse> loginWithMezon(@RequestBody GoogleAuthCodeRequest request) {
+    ApiResponse<AuthenticationResponse> loginWithMezon(@RequestBody MezonAuthCodeRequest request) {
         var result = authenticationService.loginWithMezon(request.getCode(), request.getState());
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(result)

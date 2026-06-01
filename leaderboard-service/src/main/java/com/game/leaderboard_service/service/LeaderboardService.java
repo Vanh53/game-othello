@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import com.game.leaderboard_service.dto.request.UserStatsCreationRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,7 +36,7 @@ public class LeaderboardService {
             throw new AppException(ErrorCode.INVALID_PAGE_SIZE);
         }
 
-        Page<UserStats> userPage = userStatsRepository.findAllByOrderByEloDescTotalMatchesDesc(PageRequest.of(page, size));
+        Page<UserStats> userPage = userStatsRepository.findAllByIsDeletedFalseOrderByEloDescTotalMatchesDesc(PageRequest.of(page, size));
 
         List<UserStats> listUserStats = userPage.getContent();
 
@@ -73,6 +74,15 @@ public class LeaderboardService {
         return getRank(stats);
     }
 
+    public void createUser(UserStatsCreationRequest request) {
+        UserStats newUserStats = UserStats.builder()
+                .userId(request.getUserId())
+                .name(request.getName())
+                .avatar(request.getAvatar())
+                .build();
+        userStatsRepository.save(newUserStats);
+    }
+
     private LeaderboardEntryResponse getRank(UserStats stats) {
         long higherCount = userStatsRepository.countUsersWithHigherElo(stats.getElo(), stats.getTotalMatches());
         LeaderboardEntryResponse entry = leaderboardMapper.toLeaderboardEntry(stats);
@@ -85,4 +95,23 @@ public class LeaderboardService {
         if (matches == 0) return 0.0;
         return Math.round((wins * 100.0 / matches) * 100.0) / 100.0;
     }
+
+    public void deleteUser(String userId) {
+        UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+        stats.setDeleted(true);
+        userStatsRepository.save(stats);
+    }
+
+    public void restoreUser(String userId) {
+        UserStats stats = userStatsRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+        stats.setDeleted(false);
+        userStatsRepository.save(stats);
+    }
+
+
+    // bổ sung api gọi từ phía identity-service: update thông tin, update avatar, xóa user
+    // update xóa mềm
+
 }

@@ -1,8 +1,8 @@
-package com.game.game_othello.dto.response;
+package com.game.game_othello.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import java.util.Set;
+
 import java.util.UUID;
 
 @Data
@@ -10,10 +10,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserResponse {
-    UUID id;
+public class UserStatsCreationRequest {
+    UUID userId;
     String name;
     String avatar;
-    String email;
-    String status;
 }

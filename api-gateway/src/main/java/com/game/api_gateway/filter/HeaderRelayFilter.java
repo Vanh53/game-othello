@@ -19,14 +19,14 @@ public class HeaderRelayFilter implements GlobalFilter, Ordered {
                 .filter(context -> context.getAuthentication() != null && context.getAuthentication().getPrincipal() instanceof Jwt)
                 .map(context -> (Jwt) context.getAuthentication().getPrincipal())
                 .map(jwt -> {
-                    // Lấy Subject (Thường lưu UserID)
+                    // Lấy các giá trị từ token
                     String userId = jwt.getSubject();
-                    // Lấy claim "role" (Đảm bảo lúc gen JWT bạn có bỏ claim tên là "role" vào nhé)
-                    String role = jwt.getClaimAsString("role");
+                    String role = jwt.getClaimAsString("scope");
+                    String permissions = jwt.getClaimAsString("permissions");
 
                     ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                             .header("X-User-Id", userId)
-                            .header("X-User-Role", role != null ? role : "USER")
+                            .header("X-User-Roles", role != null ? role : "USER")
                             .header("X-User-Permissions", permissions != null ? permissions : "")
                             .build();
 

@@ -3,14 +3,16 @@ package com.game.ai_model_service.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "ai_models")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -18,6 +20,7 @@ import java.util.UUID;
 public class AiModel {
 
     @Id
+    @JdbcTypeCode(SqlTypes.UUID)
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
@@ -41,4 +44,8 @@ public class AiModel {
 
     @Column(name = "created_by")
     UUID createdBy;
+
+    @Builder.Default
+    @Column(name = "is_deleted")
+    boolean isDeleted = false;
 }

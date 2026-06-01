@@ -1,5 +1,6 @@
 package com.game.pvp_service.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ public class MatchController {
     MatchService matchService;
 
     @PostMapping("/{roomId}")
+    @PreAuthorize("hasAuthority('MATCH_PLAY')")
     public ApiResponse<MatchResponse> createMatch(@PathVariable String roomId) {
         return ApiResponse.<MatchResponse>builder()
                 .result(matchService.createMatch(roomId))

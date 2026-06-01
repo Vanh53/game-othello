@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.game.pvp_service.dto.event.MatchResultEvent;
+import com.game.pvp_service.repository.httpclient.LeaderboardClient;
 import lombok.experimental.NonFinal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -57,6 +59,7 @@ public class MatchService {
     RoomService roomService;
     UserClient userClient;
     ObjectMapper objectMapper;
+    LeaderboardClient leaderboardClient;
 
     @NonFinal
     @Value("${kafka.topic.match-result}")
@@ -298,7 +301,17 @@ public class MatchService {
     }
 
     private void publishMatchResult(Match match) {
-        KafkaMatchResultEvent event = KafkaMatchResultEvent.builder()
+//        KafkaMatchResultEvent event = KafkaMatchResultEvent.builder()
+//                .matchId(match.getId())
+//                .player1Id(match.getPlayer1Id())
+//                .player2Id(match.getPlayer2Id())
+//                .winnerId(match.getWinnerId())
+//                .status(match.getStatus())
+//                .endTime(match.getEndTime())
+//                .build();
+//        kafkaTemplate.send(matchResultTopic, match.getId().toString(), event);
+
+        MatchResultEvent event = MatchResultEvent.builder()
                 .matchId(match.getId())
                 .player1Id(match.getPlayer1Id())
                 .player2Id(match.getPlayer2Id())
@@ -306,7 +319,7 @@ public class MatchService {
                 .status(match.getStatus())
                 .endTime(match.getEndTime())
                 .build();
-        kafkaTemplate.send(matchResultTopic, match.getId().toString(), event);
+        leaderboardClient.updateMatchResult(event);
         log.info("Kafka event sent: matchId={}, status={}", match.getId(), match.getStatus());
     }
 

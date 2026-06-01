@@ -1,4 +1,4 @@
-package com.game.pvp_service.config;
+package com.game.leaderboard_service.configuration;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
